@@ -12,7 +12,6 @@ Thumbs.db
 
 # Editor
 .vscode/
-.idea/
 
 # pnpm
 .pnpm-store/
