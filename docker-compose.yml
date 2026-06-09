@@ -1,0 +1,37 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: tms_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    ports:
+      - '${LOCAL_DB_PORT:-3306}:3306' #優先讀取 LOCAL_DB_PORT，如果沒設定，就自動用預設的 3306
+    volumes:
+      # 在本機創建一個名為mysql_data的區塊，並將其掛載到容器內的/var/lib/mysql目錄，這樣MySQL數據就會保存在本機上，確保容器被刪除資料也不會丟失
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # 使用mysqladmin工具ping本地資料庫，如果成功則返回OK，否則返回錯誤
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      # 容器啟動後，每隔 10 秒就去敲門檢查一次
+      interval: 10s
+      # 如果敲門超過 5 秒還沒有回應，就認為檢查失敗
+      timeout: 5s
+      # 如果連續檢查失敗 5 次，就判定容器不健康
+      retries: 5
+
+  redis:
+    image: redis:8.6-alpine
+    container_name: tms_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      # 在本機創建一個名為redis_data的區塊，並將其掛載到容器內的/data目錄，這樣Redis數據就會保存在本機上，確保容器被刪除資料也不會丟失
+      - redis_data:/data
+      #Redis 本質是記憶體資料庫（關機資料會消失）。加上 --appendonly yes 之後，Redis 只要收到新資料，就會順手把指令寫成日誌存進上面提到的 /data
+    command: redis-server --appendonly yes
+# 請 Docker 實質產生 mysql_data 和 redis_data 這兩塊專屬的硬碟空間。
+# 上面 - redis_data:/data，就是拿這裡宣告好的空間去插在 Redis 容器上。
+volumes:
+  mysql_data:
+  redis_data:

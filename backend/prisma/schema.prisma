@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs" //Matches Prisma's output format with NestJS's CommonJS runtime environment.
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User{
+  id Int @id @default(autoincrement())
+  name String @db.VarChar(50)
+  email String @unique @db.VarChar(255)
+  authProvider AuthProvider @map("auth_provider") 
+  passwordHash String? @map("password_hash") @db.VarChar(255)
+  googleId String? @unique @map("google_id") @db.VarChar(100)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  ownerBoards Board[]
+  boardMembers BoardMember[]
+  createdTasks Task[]
+  refreshTokens RefreshToken[]
+  taskAssignees TaskAssignee[]
+
+  @@map("users")
+}
+
+enum AuthProvider {
+  EMAIL  @map("email")  
+  GOOGLE @map("google")
+}
+
+model RefreshToken {
+  id Int @id @default(autoincrement())
+  userId Int @map("user_id") 
+  tokenHash String @map("token_hash") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at") 
+
+  user User @relation(fields: [userId],references: [id],onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model Board{
+  id Int @id @default(autoincrement())
+  ownerId Int @map("owner_id")
+  name String @db.VarChar(100)
+  backgroundColor String   @default("#0079BF") @map("background_color") @db.VarChar(20)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerId],references: [id],onDelete: Cascade)
+  columns Column[]
+  boardMembers BoardMember[]
+  labels Label[]
+
+  @@map("boards")
+}
+
+model BoardMember{
+  id Int @id @default(autoincrement())
+  boardId Int @map("board_id")
+  userId Int @map("user_id") 
+  role BoardRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  board Board @relation(fields:[boardId],references: [id],onDelete: Cascade)
+
+  user User @relation(fields: [userId],references: [id],onDelete: Cascade)
+
+  @@unique([boardId,userId])
+  @@index([boardId])
+  @@index([userId])
+  @@map("board_members")
+}
+
+enum BoardRole {
+  ADMIN  @map("admin")
+  MEMBER @map("member")
+  GUEST  @map("guest")
+}
+
+model Column {
+  id        Int      @id @default(autoincrement())
+  boardId   Int      @map("board_id")
+  name      String   @db.VarChar(100)
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  board Board  @relation(fields: [boardId],references: [id],onDelete: Cascade)
+
+  tasks Task[]
+
+  @@map("columns")
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  columnId    Int       @map("column_id")
+  title       String    @db.VarChar(255)
+  description String?   @db.Text          // Markdown 格式儲存
+  linkUrl     String?   @map("link_url") @db.VarChar(2048)
+  priority    Priority  @default(MEDIUM)
+  dueDate     DateTime? @map("due_date") @db.Date
+  position    Int       @default(0)
+  createdBy   Int       @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  creator User @relation(fields: [createdBy],references: [id])
+  column Column @relation(fields: [columnId],references: [id],onDelete: Cascade)
+  taskLabels TaskLabel[]
+  taskAssignees TaskAssignee[]
+
+  @@map("tasks")
+}
+
+enum Priority {
+LOW    @map("low")
+MEDIUM @map("medium")
+HIGH   @map("high")
+}
+
+model Label{
+  id Int @id @default(autoincrement())
+  boardId Int @map("board_id")
+  name String @db.VarChar(50)
+  color String @db.VarChar(50)
+
+  board Board @relation(fields: [boardId],references: [id],onDelete: Cascade)
+  taskLabels TaskLabel[]
+
+  @@index([boardId])
+  @@map("labels")
+}
+
+model TaskLabel{
+  taskId Int @map("task_id")
+  labelId Int @map("label_id")
+
+    task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId,labelId])
+  @@map("task_labels")
+}
+
+model TaskAssignee{
+  taskId Int @map("task_id")
+  userId Int @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  task Task @relation(fields: [taskId],references: [id],onDelete: Cascade)
+  user User @relation(fields: [userId],references: [id],onDelete: Cascade)
+
+  @@id([taskId,userId])
+  @@map("task_assignees")
+}
