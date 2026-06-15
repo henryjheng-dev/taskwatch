@@ -5,12 +5,14 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { BoardsModule } from './boards/boards.module';
 import { ColumnsModule } from './columns/columns.module';
 import { TasksModule } from './tasks/tasks.module';
 import { LabelsModule } from './labels/labels.module';
+import { RedisModule } from './redis/redis.module';
+import { AiModule } from './ai/ai.module';
+import { CustomThrottlerGuard } from './common/guards/throttler.guard';
 import Joi from 'joi';
 
 @Module({
@@ -80,13 +82,15 @@ import Joi from 'joi';
     ColumnsModule,
     TasksModule,
     LabelsModule,
+    RedisModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard, // 自訂錯誤訊息（中文）
     },
   ],
 })

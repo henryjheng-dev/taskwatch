@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -20,6 +21,10 @@ import type { AuthUser } from './strategies/jwt.strategy';
 
 /** req.user 在通過 JwtAuthGuard 或 Google Guard 後的型別 */
 type AuthRequest = Request & { user: AuthUser };
+
+// 登入端點專屬速率限制：10 次 / 15 分鐘（防暴力破解）
+const LOGIN_THROTTLE_TTL = 15 * 60 * 1000;
+const LOGIN_THROTTLE_LIMIT = 10;
 
 /**
  * Refresh token 存放在 httpOnly Cookie，名稱一致避免手誤。
@@ -55,29 +60,35 @@ export class AuthController {
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, refreshToken } = await this.authService.register(dto);
+    const { accessToken, refreshToken, user } =
+      await this.authService.register(dto);
     res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
-    return { accessToken };
+    return { accessToken, user };
   }
 
   /**
    * POST /auth/login
-   * Email + 密碼 登入，回傳 accessToken；refresh token 寫入 Cookie。
+   * Email + 密碼 登入，回傳 accessToken + user 資訊；refresh token 寫入 Cookie。
+   * 獨立的 Throttle 設定：10 次 / 15 分鐘，防暴力破解。
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({
+    default: { ttl: LOGIN_THROTTLE_TTL, limit: LOGIN_THROTTLE_LIMIT },
+  })
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, refreshToken } = await this.authService.login(dto);
+    const { accessToken, refreshToken, user } =
+      await this.authService.login(dto);
     res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
-    return { accessToken };
+    return { accessToken, user };
   }
 
   /**
    * POST /auth/refresh
-   * 用 httpOnly Cookie 裡的 refresh token 換新的 token pair（Token Rotation）。
+   * 用 httpOnly Cookie 裡的 refresh token 換新的 token pair。
    * 不需要 JWT Guard，因為 access token 此時已過期。
    */
   @Post('refresh')
