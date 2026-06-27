@@ -5,13 +5,14 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'node:crypto';
-import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
+import bcrypt from 'bcrypt';
 import ms, { type StringValue } from 'ms';
 import { PrismaService } from '../prisma/prisma.service';
 import { RefreshTokensRepository } from './refresh-tokens.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { OAuth2Client } from 'google-auth-library';
 import { JwtPayload } from './strategies/jwt.strategy';
 import type { TokenPair, LoginResponse } from './interface';
 import { AuthProvider, Prisma } from '@/generated/prisma/client';
@@ -187,12 +188,12 @@ export class AuthService {
     const jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
     const jwtExpiresIn =
       this.configService.getOrThrow<StringValue>('JWT_EXPIRES_IN');
-    const refreshExpiresIn = this.configService.getOrThrow<string>(
+    const refreshExpiresIn = this.configService.getOrThrow<StringValue>(
       'JWT_REFRESH_EXPIRES_IN',
     );
 
     const payload: JwtPayload = { sub: userId, email };
-    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const rawRefreshToken = randomBytes(40).toString('hex');
 
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: jwtSecret,

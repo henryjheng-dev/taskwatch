@@ -18,6 +18,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { AuthUser } from './strategies/jwt.strategy';
+import { CurrentUser } from './decorators/current-user.decorator';
 
 /** req.user 在通過 JwtAuthGuard 或 Google Guard 後的型別 */
 type AuthRequest = Request & { user: AuthUser };
@@ -58,6 +59,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Body() dto: RegisterDto,
+    // passthrough: true 讓 NestJS 不自動送出 response，方便我們在同一個 endpoint 設定 Cookie 後再送出 response。
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken, user } =
@@ -120,10 +122,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
-    @Req() req: AuthRequest,
+    @CurrentUser() user: AuthUser,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.logout(req.user.id);
+    await this.authService.logout(user.id);
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
   }
 
