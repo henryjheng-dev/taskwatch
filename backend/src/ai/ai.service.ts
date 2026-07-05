@@ -6,13 +6,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Priority } from '@/generated/prisma/client';
 import { GoogleGenAI } from '@google/genai';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { GenerateBoardDto } from './dto/generate-board.dto';
 
-/** 每位使用者每日最多使用次數（PRD §7） */
-const AI_DAILY_LIMIT = 5;
 /** Redis Key 格式：ai_usage:{userId} */
 const aiUsageKey = (userId: number) => `ai_usage:${userId}`;
 /** TTL = 24 小時 */
@@ -24,7 +23,11 @@ const SECONDS_IN_A_DAY = 24 * 60 * 60;
  */
 interface GeminiColumn {
   name: string;
-  tasks: { title: string; description?: string }[];
+  tasks: {
+    title: string;
+    description?: string;
+    priority: 'low' | 'medium' | 'high';
+  }[];
 }
 
 interface GeminiBoardSchema {
@@ -36,6 +39,7 @@ interface GeminiBoardSchema {
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly genai: GoogleGenAI;
+  private readonly aiDailyLimit: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -44,6 +48,7 @@ export class AiService {
   ) {
     const apiKey = this.configService.getOrThrow<string>('GEMINI_API_KEY');
     this.genai = new GoogleGenAI({ apiKey });
+    this.aiDailyLimit = this.configService.get<number>('AI_DAILY_LIMIT') ?? 5;
   }
 
   /**
@@ -54,12 +59,13 @@ export class AiService {
    * @returns 建立好的 Board 及其所有 Columns + Tasks
    */
   async generateBoard(dto: GenerateBoardDto, userId: number) {
-    // ── 1. 確認每日限額 ──────────────────────────────────────────
+    // ── 1. 先 INCR，再 check（原子操作，無 race condition）──────
     const usageKey = aiUsageKey(userId);
-    const used = await this.redis.get(usageKey);
-    if (used >= AI_DAILY_LIMIT) {
+    const count = await this.redis.increment(usageKey, SECONDS_IN_A_DAY);
+    if (count > this.aiDailyLimit) {
+      const ttl = await this.redis.ttl(usageKey);
       throw new HttpException(
-        `今日 AI 生成次數已達上限（${AI_DAILY_LIMIT} 次），請明日再試`,
+        `今日 AI 生成次數已達上限（${this.aiDailyLimit} 次），${Math.ceil(ttl / 3600)} 小時後重置`,
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -73,7 +79,11 @@ export class AiService {
     {
       "name": "欄位名稱",
       "tasks": [
-        { "title": "任務標題", "description": "任務描述（可選）" }
+  { 
+    "title": "任務標題", 
+    "description": "任務描述（可選）",
+    "priority": "low | medium | high"
+  }
       ]
     }
   ]
@@ -82,12 +92,14 @@ export class AiService {
 - 最多 5 個欄位
 - 每個欄位最多 5 個任務
 - 使用繁體中文回應（若使用者用英文輸入則用英文）
-- 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）`;
+- 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）
+- priority 只能填 low / medium / high
+`;
 
     let parsedBoard: GeminiBoardSchema;
     try {
       const response = await this.genai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash-lite',
         contents: [
           {
             role: 'user',
@@ -138,6 +150,8 @@ export class AiService {
             data: col.tasks.map((task, taskIndex) => ({
               title: task.title,
               description: task.description ?? null,
+              priority:
+                (task.priority?.toUpperCase() as Priority) ?? Priority.MEDIUM,
               position: taskIndex,
               columnId: createdCol.id,
               createdBy: userId,
@@ -159,10 +173,6 @@ export class AiService {
         },
       });
     });
-
-    // ── 4. 遞增使用次數（Transaction 成功後才計數）──────────────
-    await this.redis.increment(usageKey, SECONDS_IN_A_DAY);
-
     return board;
   }
 
@@ -177,8 +187,8 @@ export class AiService {
 
     return {
       used,
-      remaining: Math.max(0, AI_DAILY_LIMIT - used),
-      limit: AI_DAILY_LIMIT,
+      remaining: Math.max(0, this.aiDailyLimit - used),
+      limit: this.aiDailyLimit,
       resetsIn: ttl > 0 ? ttl : 0,
     };
   }

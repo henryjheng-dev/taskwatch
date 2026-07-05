@@ -1,1 +1,124 @@
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('/fonts/geist-sans/Geist-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('/fonts/geist-sans/Geist-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('/fonts/geist-sans/Geist-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/geist-mono/GeistMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/geist-mono/GeistMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+
 @import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --color-primary: #171717;
+  --color-secondary: #4d4d4d;
+  --color-tertiary: #006bff;
+
+  --color-bg-100: #ffffff;
+  --color-bg-200: #fafafa;
+
+  --color-gray-100: #f2f2f2;
+  --color-gray-200: #ebebeb;
+  --color-gray-300: #e6e6e6;
+  --color-gray-400: #eaeaea;
+  --color-gray-500: #c9c9c9;
+  --color-gray-600: #a8a8a8;
+  --color-gray-700: #8f8f8f;
+  --color-gray-800: #7d7d7d;
+  --color-gray-900: #4d4d4d;
+  --color-gray-1000: #171717;
+
+  --color-blue-100: #f0f7ff;
+  --color-blue-200: #e9f4ff;
+  --color-blue-300: #dfefff;
+  --color-blue-400: #cae7ff;
+  --color-blue-500: #94ccff;
+  --color-blue-600: #48aeff;
+  --color-blue-700: #006bff;
+  --color-blue-800: #0059ec;
+  --color-blue-900: #005ff2;
+  --color-blue-1000: #002359;
+
+  --color-red-100: #ffeeef;
+  --color-red-200: #ffe8ea;
+  --color-red-300: #ffe3e4;
+  --color-red-400: #ffd7d6;
+  --color-red-500: #ffb1b3;
+  --color-red-600: #ff676d;
+  --color-red-700: #fc0035;
+  --color-red-800: #ea001d;
+  --color-red-900: #d8001b;
+  --color-red-1000: #47000c;
+
+  --color-amber-100: #fff6de;
+  --color-amber-200: #fff4cf;
+  --color-amber-300: #fff1c1;
+  --color-amber-400: #ffdc73;
+  --color-amber-500: #ffc543;
+  --color-amber-600: #ffa600;
+  --color-amber-700: #ffae00;
+  --color-amber-800: #ff9300;
+  --color-amber-900: #aa4d00;
+  --color-amber-1000: #561900;
+
+  --color-green-100: #ecfdec;
+  --color-green-200: #e5fce7;
+  --color-green-300: #d3fad1;
+  --color-green-400: #b9f5bc;
+  --color-green-500: #82eb8d;
+  --color-green-600: #4ce15e;
+  --color-green-700: #28a948;
+  --color-green-800: #279141;
+  --color-green-900: #107d32;
+  --color-green-1000: #003a00;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 2px 2px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 1px 1px rgba(0, 0, 0, 0.02), 0 4px 8px -4px rgba(0, 0, 0, 0.04), 0 16px 24px -8px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 1px 1px rgba(0, 0, 0, 0.02), 0 8px 16px -4px rgba(0, 0, 0, 0.04), 0 24px 32px -8px rgba(0, 0, 0, 0.06);
+}
+
+body {
+  font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

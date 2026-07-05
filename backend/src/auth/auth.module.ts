@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RefreshTokensRepository } from './refresh-tokens.repository';
+import { OAuth2Client } from 'google-auth-library';
 
 @Module({
   imports: [
@@ -19,7 +20,17 @@ import { RefreshTokensRepository } from './refresh-tokens.repository';
       }),
     }),
   ],
-  providers: [AuthService, RefreshTokensRepository, JwtStrategy],
+  providers: [
+    AuthService,
+    RefreshTokensRepository,
+    JwtStrategy,
+    {
+      provide: OAuth2Client,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        new OAuth2Client(configService.getOrThrow<string>('GOOGLE_CLIENT_ID')),
+    },
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })

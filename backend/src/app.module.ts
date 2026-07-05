@@ -39,13 +39,14 @@ import Joi from 'joi';
         // min(32) = 256-bit 最低安全長度，符合 OWASP JWT Cheat Sheet
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_EXPIRES_IN: Joi.string().required(),
-        JWT_REFRESH_SECRET: Joi.string().min(32).required(),
         JWT_REFRESH_EXPIRES_IN: Joi.string().required(),
 
         // ── Google OAuth ──────────────────────────────────────────
         GOOGLE_CLIENT_ID: Joi.string().required(),
-        GOOGLE_CLIENT_SECRET: Joi.string().required(),
-        GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
+
+        // ── Gemini AI ────────────────────────────────────────────
+        GEMINI_API_KEY: Joi.string().required(),
+        AI_DAILY_LIMIT: Joi.number().integer().min(1).default(5),
 
         // ── Redis ─────────────────────────────────────────────────
         REDIS_HOST: Joi.string().required(),

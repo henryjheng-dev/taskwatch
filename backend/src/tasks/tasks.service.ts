@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardsService } from '../boards/boards.service';
 import { ColumnsService } from '../columns/columns.service';
+import { LabelsService } from '../labels/labels.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
@@ -27,6 +28,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly boardsService: BoardsService,
     private readonly columnsService: ColumnsService,
+    private readonly labelsService: LabelsService,
   ) {}
 
   // ────────────────────────── Task CRUD ──────────────────────────────────
@@ -192,6 +194,12 @@ export class TasksService {
   async attachLabel(taskId: number, labelId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
     await this.boardsService.assertMember(task.column.boardId, userId);
+
+    // 確認 label 屬於同一看板
+    await this.labelsService.assertLabelBelongsToBoard(
+      labelId,
+      task.column.boardId,
+    );
 
     return this.prisma.taskLabel.upsert({
       where: { taskId_labelId: { taskId, labelId } },

@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -10,18 +9,16 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+// import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { AuthUser } from './strategies/jwt.strategy';
 import { CurrentUser } from './decorators/current-user.decorator';
-
-/** req.user 在通過 JwtAuthGuard 或 Google Guard 後的型別 */
-type AuthRequest = Request & { user: AuthUser };
 
 // 登入端點專屬速率限制：10 次 / 15 分鐘（防暴力破解）
 const LOGIN_THROTTLE_TTL = 15 * 60 * 1000;
@@ -129,32 +126,17 @@ export class AuthController {
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
   }
 
-  /**
-   * GET /auth/google
-   * Passport 攔截後自動 redirect 到 Google 授權頁，方法本身無需內容。
-   */
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  googleLogin() {
-    // Passport redirect，此處無需實作
-  }
+  // 新增 @Post('google')
 
-  /**
-   * GET /auth/google/callback
-   * Google 授權完成後回到此 endpoint。
-   * GoogleStrategy.validate() 已建立/取得 user，結果掛在 req.user。
-   */
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @Post('google')
   @HttpCode(HttpStatus.OK)
-  async googleCallback(
-    @Req() req: AuthRequest,
+  async googleLogin(
+    @Body() dto: GoogleLoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken, refreshToken } =
-      await this.authService.issueTokensForUser(req.user.id, req.user.email);
-
+    const { accessToken, refreshToken, user } =
+      await this.authService.googleLogin(dto);
     res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
-    return { accessToken };
+    return { accessToken, user };
   }
 }

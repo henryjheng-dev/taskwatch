@@ -15,3 +15,6 @@ Thumbs.db
 
 # pnpm
 .pnpm-store/
+
+# github
+.github/

@@ -41,6 +41,48 @@ export class RefreshTokensRepository {
   }
 
   /**
+   * 原子撤銷單一 token。
+   * 回傳被撤銷的記錄（含 userId），若 token 不存在或已撤銷則回傳 null。
+   */
+  async revokeOne(rawToken: string): Promise<{ userId: number } | null> {
+    // updateMany 的 WHERE 本身是原子的：
+    // 兩個併發請求只有一個能拿到 count = 1，另一個拿到 count = 0
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        token: rawToken,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { revokedAt: new Date() },
+    });
+    /**
+     * conut === 0 代表 mysql 沒有任何資料被更新，可能是因為token不存在、已過期或已被撤銷。
+     */
+    if (result.count === 0) {
+      return null;
+    }
+
+    // 取得 userId 供後續使用
+    const record = await this.prisma.refreshToken.findFirst({
+      where: { token: rawToken },
+      select: { userId: true },
+    });
+
+    return record ?? null;
+  }
+
+  /**
+   * 檢查 token 是否曾存在但已被撤銷（用於偵測重複使用）
+   */
+  async findRevoked(rawToken: string): Promise<{ userId: number } | null> {
+    const record = await this.prisma.refreshToken.findFirst({
+      where: { token: rawToken, revokedAt: { not: null } },
+      select: { userId: true },
+    });
+    return record ?? null;
+  }
+
+  /**
    * 撤銷使用者所有 Token（登出時呼叫）。
    */
   async revokeAll(userId: number): Promise<void> {
