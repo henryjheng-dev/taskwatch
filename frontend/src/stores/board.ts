@@ -92,6 +92,14 @@ export const useBoardStore = defineStore('board', () => {
     board.value?.columns.sort((a, b) => a.position - b.position)
   }
 
+  function takeSnapshot() {
+    return JSON.parse(JSON.stringify(board.value))
+  }
+
+  function restoreSnapshot(snapshot: Board | null) {
+    board.value = snapshot
+  }
+
   function $reset() {
     board.value = null
     loading.value = false
@@ -102,6 +110,6 @@ export const useBoardStore = defineStore('board', () => {
     board, loading, error,
     fetchBoard, findTask, updateBoardLocally,
     createTask, updateTask, deleteTask, moveTask,
-    createColumn, $reset,
+    createColumn, takeSnapshot, restoreSnapshot, $reset,
   }
 })

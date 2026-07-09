@@ -33,7 +33,7 @@ onMounted(() => {
     })
     ;(window as any).google.accounts.id.renderButton(
       document.getElementById('google-signin-button'),
-      { type: 'standard', shape: 'rectangular', size: 'large', width: '100%' },
+      { type: 'standard', shape: 'rectangular', size: 'large', width: 300 },
     )
     loaded.value = true
   }
@@ -63,7 +63,7 @@ onUnmounted(() => {
     </div>
     <div
       id="google-signin-button"
-      class="min-h-[40px] flex items-center justify-center"
+      class="min-h-10 flex items-center justify-center"
       :class="{ 'opacity-0': !loaded }"
     />
   </div>

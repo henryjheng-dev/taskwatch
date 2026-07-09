@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Column } from '../../types'
-import TaskCard from './TaskCard.vue'
+import TaskCardDraggable from './TaskCardDraggable.vue'
 
-defineProps<{
+const props = defineProps<{
   column: Column
   boardId: number
 }>()
@@ -10,11 +11,61 @@ defineProps<{
 const emit = defineEmits<{
   addTask: [columnId: number]
   selectTask: [taskId: number]
+  dropTask: [taskId: number, targetColumnId: number, position: number]
 }>()
+
+const dragOver = ref(false)
+const columnRef = ref<HTMLElement | null>(null)
+
+function onDragOver(e: DragEvent) {
+  e.preventDefault()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'move'
+  }
+  dragOver.value = true
+}
+
+function onDragLeave(e: DragEvent) {
+  const target = e.relatedTarget as Node | null
+  if (columnRef.value && target && columnRef.value.contains(target)) return
+  dragOver.value = false
+}
+
+function onDrop(e: DragEvent) {
+  e.preventDefault()
+  dragOver.value = false
+
+  const taskId = e.dataTransfer?.getData('text/plain')
+  if (!taskId) return
+
+  const el = columnRef.value
+  if (!el) return
+
+  const taskEls = el.querySelectorAll('[data-task-id]')
+  const mouseY = e.clientY
+  let insertIdx = props.column.tasks.length
+
+  for (let i = 0; i < taskEls.length; i++) {
+    const rect = taskEls[i].getBoundingClientRect()
+    if (mouseY < rect.top + rect.height / 2) {
+      insertIdx = i
+      break
+    }
+  }
+
+  emit('dropTask', Number(taskId), props.column.id, insertIdx)
+}
 </script>
 
 <template>
-  <div class="flex-shrink-0 w-[220px] xl:w-[230px]">
+  <div
+    ref="columnRef"
+    class="flex-shrink-0 w-[220px] xl:w-[230px] transition-colors duration-150"
+    :class="dragOver ? 'bg-blue-100/50 rounded-sm' : ''"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
+  >
     <div class="flex items-center gap-2 mb-3">
       <h3 class="text-sm font-normal text-gray-900 leading-5">{{ column.name }}</h3>
       <span
@@ -24,8 +75,8 @@ const emit = defineEmits<{
       </span>
     </div>
 
-    <div class="flex flex-col gap-2">
-      <TaskCard
+    <div class="flex flex-col gap-2 min-h-[8px]">
+      <TaskCardDraggable
         v-for="task in column.tasks"
         :key="task.id"
         :task="task"

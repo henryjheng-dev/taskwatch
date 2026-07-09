@@ -24,6 +24,21 @@ export class RedisService {
     return count;
   }
 
+  /**
+   * 原子遞減計數器。
+   * 用於「本次請求失敗，退還額度」的情境（例如 AI 生成失敗）。
+   * 注意：不會重設或延長 TTL，也不會讓計數低於 0（低於 0 時歸零並刪除 key，
+   * 避免殘留一個負數，導致之後的 remaining 計算異常）。
+   */
+  async decrement(key: string): Promise<number> {
+    const count = await this.redis.decr(key);
+    if (count <= 0) {
+      await this.redis.del(key);
+      return 0;
+    }
+    return count;
+  }
+
   /** 取得剩餘 TTL（秒） */
   async ttl(key: string): Promise<number> {
     return this.redis.ttl(key);

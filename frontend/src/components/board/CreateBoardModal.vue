@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import BaseModal from '../common/BaseModal.vue'
-import BaseInput from '../common/BaseInput.vue'
-import BaseButton from '../common/BaseButton.vue'
+import { ref } from 'vue';
+import BaseModal from '../common/BaseModal.vue';
+import BaseInput from '../common/BaseInput.vue';
+import BaseButton from '../common/BaseButton.vue';
 
 const props = defineProps<{
-  show: boolean
-}>()
+  show: boolean;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  created: [boardId: number]
-}>()
+  close: [];
+  created: [boardId: number];
+}>();
 
-const name = ref('')
-const selectedColor = ref('#0079BF')
-const loading = ref(false)
-const error = ref('')
+const name = ref('');
+const selectedColor = ref('#0079BF');
+const loading = ref(false);
+const error = ref('');
 
 const colors = [
   { value: '#0079BF', label: 'Blue' },
@@ -24,54 +24,50 @@ const colors = [
   { value: '#519839', label: 'Green' },
   { value: '#B04632', label: 'Red' },
   { value: '#89609E', label: 'Purple' },
-]
+];
 
 function reset() {
-  name.value = ''
-  selectedColor.value = '#0079BF'
-  loading.value = false
-  error.value = ''
+  name.value = '';
+  selectedColor.value = '#0079BF';
+  loading.value = false;
+  error.value = '';
 }
 
 async function handleCreate() {
   if (!name.value.trim()) {
-    error.value = '請輸入看板名稱'
-    return
+    error.value = '請輸入看板名稱';
+    return;
   }
 
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = '';
   try {
-    const { boardsApi } = await import('../../api')
+    const { boardsApi } = await import('../../api');
+    // console.log(boardsApi.create);
     const res = await boardsApi.create({
       name: name.value.trim(),
       backgroundColor: selectedColor.value,
-    })
-    emit('created', res.data.data.id)
-    reset()
+    });
+    emit('created', res.data.data.id);
+    reset();
   } catch (err: any) {
-    const msg = err.response?.data?.message
-    error.value = Array.isArray(msg) ? msg.join(', ') : msg || '建立看板失敗'
+    const msg = err.response?.data?.message;
+    error.value = Array.isArray(msg) ? msg.join(', ') : msg || '建立看板失敗';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function handleClose() {
-  reset()
-  emit('close')
+  reset();
+  emit('close');
 }
 </script>
 
 <template>
   <BaseModal :show="show" title="Create Board" max-width="max-w-sm" @close="handleClose">
     <div class="space-y-5">
-      <BaseInput
-        v-model="name"
-        label="Board name"
-        placeholder="My new project"
-        :error="error"
-      />
+      <BaseInput v-model="name" label="Board name" placeholder="My new project" :error="error" />
 
       <div class="space-y-2">
         <label class="block text-sm font-medium text-gray-1000">Background</label>

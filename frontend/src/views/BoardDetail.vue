@@ -6,6 +6,7 @@ import { useToastStore } from '../stores/toast';
 import BoardColumn from '../components/board/BoardColumn.vue';
 import TaskCreateForm from '../components/board/TaskCreateForm.vue';
 import TaskDetailModal from '../components/board/TaskDetailModal.vue';
+import { useDragAndDrop } from '../composables/useDragAndDrop';
 
 const route = useRoute();
 const router = useRouter();
@@ -20,20 +21,20 @@ const addingColumn = ref(false);
 const selectedTaskId = ref<number | null>(null);
 
 const selectedTask = computed(() => {
-  if (selectedTaskId.value === null) return null
+  if (selectedTaskId.value === null) return null;
   for (const col of boardStore.board?.columns ?? []) {
-    const found = col.tasks.find((t) => t.id === selectedTaskId.value)
-    if (found) return found
+    const found = col.tasks.find((t) => t.id === selectedTaskId.value);
+    if (found) return found;
   }
-  return null
-})
+  return null;
+});
 
 function handleSelectTask(taskId: number) {
-  selectedTaskId.value = taskId
+  selectedTaskId.value = taskId;
 }
 
 function handleCloseTaskDetail() {
-  selectedTaskId.value = null
+  selectedTaskId.value = null;
 }
 
 onMounted(async () => {
@@ -44,9 +45,15 @@ onMounted(async () => {
   }
 });
 
+const { onDrop } = useDragAndDrop();
+
 function handleAddTask(columnId: number) {
   creatingColumnId.value = columnId;
   showCreateModal.value = true;
+}
+
+function handleDropTask(taskId: number, targetColumnId: number, position: number) {
+  onDrop(taskId, { targetColumnId, position });
 }
 
 async function handleAddColumn() {
@@ -95,14 +102,12 @@ async function handleAddColumn() {
             />
           </svg>
           <span class="text-gray-900">My new project</span>
-          <span class="text-gray-600">/</span>
-          <span class="text-gray-1000 font-medium">New Document</span>
         </nav>
 
         <span
           class="inline-flex items-center px-2 py-0.5 text-[13px] font-normal leading-4 text-white bg-gray-1000 rounded-full"
         >
-          Composing
+          Board
         </span>
       </div>
 
@@ -239,6 +244,7 @@ async function handleAddColumn() {
         :board-id="boardId"
         @add-task="handleAddTask"
         @select-task="handleSelectTask"
+        @drop-task="handleDropTask"
       />
 
       <div class="shrink-0 w-55 xl:w-57.5">

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Priority } from '@/generated/prisma/client';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { GenerateBoardDto } from './dto/generate-board.dto';
@@ -34,6 +34,54 @@ interface GeminiBoardSchema {
   boardName: string;
   columns: GeminiColumn[];
 }
+
+/**
+ * 對應 GeminiBoardSchema 的 JSON Schema。
+ * 交給 generateContent 的 responseSchema，讓 Gemini「強制」輸出符合此結構的 JSON。
+ */
+const boardResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    boardName: {
+      type: Type.STRING,
+      description: '看板名稱',
+    },
+    columns: {
+      type: Type.ARRAY,
+      description:
+        '最多 5 個欄位，欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING, description: '欄位名稱' },
+          tasks: {
+            type: Type.ARRAY,
+            description: '每個欄位最多 5 個任務',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: '任務標題' },
+                description: {
+                  type: Type.STRING,
+                  description: '任務描述（可選）',
+                  nullable: true,
+                },
+                priority: {
+                  type: Type.STRING,
+                  enum: ['low', 'medium', 'high'],
+                  description: '任務優先級',
+                },
+              },
+              required: ['title', 'priority'],
+            },
+          },
+        },
+        required: ['name', 'tasks'],
+      },
+    },
+  },
+  required: ['boardName', 'columns'],
+};
 
 @Injectable()
 export class AiService {
@@ -70,52 +118,39 @@ export class AiService {
       );
     }
 
-    // ── 2. 呼叫 Gemini API ───────────────────────────────────────
+    // ── 2. 呼叫 Gemini API（結構化輸出，不再需要文字描述格式）──────
     const systemPrompt = `你是一個專案管理助手。使用者會描述一個專案，你需要為其生成看板結構。
-請只回傳 JSON，不要有其他文字，格式如下：
-{
-  "boardName": "看板名稱",
-  "columns": [
-    {
-      "name": "欄位名稱",
-      "tasks": [
-  { 
-    "title": "任務標題", 
-    "description": "任務描述（可選）",
-    "priority": "low | medium | high"
-  }
-      ]
-    }
-  ]
-}
 規則：
 - 最多 5 個欄位
 - 每個欄位最多 5 個任務
 - 使用繁體中文回應（若使用者用英文輸入則用英文）
-- 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）
-- priority 只能填 low / medium / high
-`;
+- 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）`;
 
     let parsedBoard: GeminiBoardSchema;
     try {
       const response = await this.genai.models.generateContent({
-        model: 'gemini-2.5-flash-lite',
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${systemPrompt}\n\n使用者需求：${dto.prompt}` }],
-          },
-        ],
+        model: 'gemini-3.1-flash-lite',
+        contents: dto.prompt,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: 'application/json',
+          responseSchema: boardResponseSchema,
+          temperature: 1,
+          maxOutputTokens: 65536,
+          topP: 0.95,
+        },
       });
-      const raw = response.text ?? '';
-      // 移除可能的 markdown code block
-      const cleaned = raw
-        .replace(/^```(?:json)?\n?/, '')
-        .replace(/\n?```$/, '')
-        .trim();
-      parsedBoard = JSON.parse(cleaned) as GeminiBoardSchema;
+
+      const raw = response.text;
+      if (!raw) {
+        throw new Error('Gemini 回傳內容為空');
+      }
+      // responseSchema 已保證輸出是符合結構的 JSON，不需要再處理 markdown code fence
+      parsedBoard = JSON.parse(raw) as GeminiBoardSchema;
     } catch (error) {
       this.logger.error('Gemini API 呼叫失敗或 JSON 解析失敗', error);
+      // 這次請求沒有成功產出結果，退還本次額度，避免使用者因系統錯誤而白白扣掉次數
+      await this.redis.decrement(usageKey);
       throw new BadRequestException('AI 生成失敗，請重新嘗試或修改描述');
     }
 
@@ -150,8 +185,9 @@ export class AiService {
             data: col.tasks.map((task, taskIndex) => ({
               title: task.title,
               description: task.description ?? null,
-              priority:
-                (task.priority?.toUpperCase() as Priority) ?? Priority.MEDIUM,
+              // priority 已由 responseSchema 的 enum 限制為 low/medium/high，
+              // toUpperCase() 後必定落在 Priority enum 範圍內，不會再有非法值風險
+              priority: task.priority.toUpperCase() as Priority,
               position: taskIndex,
               columnId: createdCol.id,
               createdBy: userId,

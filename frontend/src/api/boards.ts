@@ -20,15 +20,15 @@ export const boardsApi = {
   },
 
   get(id: number) {
-    return api.get<Board>(`/boards/${id}`);
+    return api.get<ApiResponse<Board>>(`/boards/${id}`);
   },
 
   create(data: CreateBoardRequest) {
-    return api.post<Board>(`/boards`, data);
+    return api.post<ApiResponse<Board>>('/boards', data);
   },
 
   update(id: number, data: UpdateBoardRequest) {
-    return api.patch<Board>(`/boards/${id}`, data);
+    return api.patch<ApiResponse<Board>>(`/boards/${id}`, data);
   },
 
   delete(id: number) {
@@ -36,15 +36,15 @@ export const boardsApi = {
   },
 
   getMembers(boardId: number) {
-    return api.get<BoardMember[]>(`/boards/${boardId}/members`);
+    return api.get<ApiResponse<BoardMember[]>>(`/boards/${boardId}/members`);
   },
 
   addMember(boardId: number, data: AddMemberRequest) {
-    return api.post<BoardMember>(`/boards/${boardId}/members`, data);
+    return api.post<ApiResponse<BoardMember>>(`/boards/${boardId}/members`, data);
   },
 
   updateMemberRole(boardId: number, userId: number, data: UpdateMemberRoleRequest) {
-    return api.patch<BoardMember>(`/boards/${boardId}/members/${userId}`, data);
+    return api.patch<ApiResponse<BoardMember>>(`/boards/${boardId}/members/${userId}`, data);
   },
 
   removeMember(boardId: number, userId: number) {
@@ -54,19 +54,19 @@ export const boardsApi = {
 
 export const columnsApi = {
   list(boardId: number) {
-    return api.get<Column[]>(`/boards/${boardId}/columns`);
+    return api.get<ApiResponse<Column[]>>(`/boards/${boardId}/columns`);
   },
 
   create(boardId: number, data: CreateColumnRequest) {
-    return api.post<Column>(`/boards/${boardId}/columns`, data);
+    return api.post<ApiResponse<Column>>(`/boards/${boardId}/columns`, data);
   },
 
   update(boardId: number, id: number, data: UpdateColumnRequest) {
-    return api.patch<Column>(`/boards/${boardId}/columns/${id}`, data);
+    return api.patch<ApiResponse<Column>>(`/boards/${boardId}/columns/${id}`, data);
   },
 
   reorder(boardId: number, data: ReorderColumnsRequest) {
-    return api.patch<void>(`/boards/${boardId}/columns/reorder`, data);
+    return api.patch<ApiResponse<void>>(`/boards/${boardId}/columns/reorder`, data);
   },
 
   delete(boardId: number, id: number) {
