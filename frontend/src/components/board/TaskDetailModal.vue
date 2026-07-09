@@ -45,11 +45,15 @@ watch(
   },
 );
 
-watch(editing, (val) => {
-  if (val && editorRef.value) {
-    editorRef.value.innerHTML = description.value;
-  }
-}, { flush: 'post' });
+watch(
+  editing,
+  (val) => {
+    if (val && editorRef.value) {
+      editorRef.value.innerHTML = description.value;
+    }
+  },
+  { flush: 'post' },
+);
 
 function syncDescription() {
   if (editorRef.value) {
@@ -107,7 +111,6 @@ async function handleDelete() {
 <template>
   <BaseModal :show="show" title="Task" max-width="max-w-md" @close="emit('close')">
     <div v-if="task" class="space-y-4">
-
       <div class="space-y-1">
         <div class="flex items-center justify-between">
           <label class="block text-base font-medium text-gray-1000">Title</label>
@@ -119,10 +122,7 @@ async function handleDelete() {
             {{ editing ? 'Done' : 'Edit' }}
           </button>
         </div>
-        <div
-          v-if="!editing"
-          class="w-full min-h-10 py-2 text-sm text-gray-1000"
-        >
+        <div v-if="!editing" class="w-full min-h-10 py-2 text-sm text-gray-900">
           {{ title }}
         </div>
         <input
@@ -132,7 +132,7 @@ async function handleDelete() {
           :class="[error ? 'border-red-400 focus-visible:ring-red-700' : '']"
           @input="title = ($event.target as HTMLInputElement).value"
         />
-        <p v-if="error" class="text-sm text-red-800">{{ error }}</p>
+        <p v-if="error" class="text-xs font-light leading-relaxed text-red-800">{{ error }}</p>
       </div>
       <hr v-if="!editing" class="h-px bg-black/8 border-0" />
 
@@ -140,7 +140,11 @@ async function handleDelete() {
         <label class="block text-base font-medium text-gray-1000">Description</label>
         <div
           class="overflow-hidden"
-          :class="editing ? 'border border-black/8 rounded-sm focus-within:ring-2 focus-within:ring-gray-1000 focus-within:ring-offset-2 focus-within:ring-offset-white' : ''"
+          :class="
+            editing
+              ? 'border border-black/8 rounded-sm focus-within:ring-2 focus-within:ring-gray-1000 focus-within:ring-offset-2 focus-within:ring-offset-white'
+              : ''
+          "
         >
           <div
             v-if="editing"
@@ -162,7 +166,7 @@ async function handleDelete() {
             <span class="w-px h-4 mx-0.5 bg-black/8" />
             <button
               type="button"
-              class="w-7 h-7 flex items-center justify-center text-sm font-bold text-gray-900 rounded hover:bg-black/5 transition-colors"
+              class="w-7 h-7 flex items-center justify-center text-sm font-bold tracking-tight text-gray-900 rounded hover:bg-black/5 transition-colors"
               title="Bold"
               @click="execCmd('bold')"
             >
@@ -204,16 +208,18 @@ async function handleDelete() {
           </div>
           <div
             v-if="!editing"
-            class="editor py-2 text-sm text-gray-1000 min-h-80 cursor-default"
+            class="editor py-2 text-sm font-md leading-relaxed text-gray-900 min-h-80 cursor-default"
           >
             <div v-if="description" v-html="description" />
-            <span v-else class="text-gray-600">No description</span>
+            <span v-else class="text-sm font-light leading-relaxed text-slate-500"
+              >No description</span
+            >
           </div>
           <div
             v-else
             ref="editorRef"
             contenteditable="true"
-            class="editor px-3 py-2 text-sm text-gray-1000 min-h-80 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-600"
+            class="editor px-3 py-2 text-xs font-light leading-relaxed text-slate-850min-h-80 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-600"
             data-placeholder="Add a description..."
             @input="syncDescription"
           />
@@ -224,10 +230,7 @@ async function handleDelete() {
       <div class="flex gap-4">
         <div class="flex-1 space-y-1">
           <label class="block text-base font-medium text-gray-1000">Priority</label>
-          <div
-            v-if="!editing"
-            class="w-full min-h-10 py-2 text-sm text-gray-1000 capitalize"
-          >
+          <div v-if="!editing" class="w-full min-h-10 py-2 text-sm leading-relaxed text-gray-900">
             {{ priority.toLowerCase() }}
           </div>
           <select
@@ -244,7 +247,7 @@ async function handleDelete() {
           <label class="block text-base font-medium text-gray-1000">Due date</label>
           <div
             v-if="!editing"
-            class="w-full min-h-10 py-2 text-sm text-gray-1000"
+            class="w-full min-h-10 py-2 text-sm leading-relaxed text-gray-900"
             :class="{ 'text-gray-600': !dueDate }"
           >
             {{ dueDate || 'Not set' }}
@@ -259,7 +262,7 @@ async function handleDelete() {
       </div>
       <hr v-if="!editing" class="h-px bg-black/8 border-0" />
 
-      <div v-if="task.createdAt" class="text-xs text-gray-700">
+      <div v-if="task.createdAt" class="text-xs font-light leading-relaxed text-slate-500">
         Created
         {{
           new Date(task.createdAt).toLocaleDateString('en-US', {
@@ -286,19 +289,22 @@ async function handleDelete() {
 <style scoped>
 .editor :deep(h1) {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.3;
   margin: 0.5em 0 0.25em;
 }
 .editor :deep(h2) {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.35;
   margin: 0.4em 0 0.2em;
 }
 .editor :deep(h3) {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.4;
   margin: 0.3em 0 0.15em;
 }

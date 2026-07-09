@@ -56,12 +56,12 @@ async function handleAiGenerate(prompt: string) {
 <template>
   <div class="min-h-screen bg-bg-200">
     <header class="h-14 bg-white border-b border-black/8 flex items-center px-6">
-      <h1 class="text-sm font-medium text-gray-1000">TaskWatch</h1>
+      <h1 class="text-sm font-bold tracking-tight text-gray-1000">TaskWatch</h1>
     </header>
 
     <main class="max-w-5xl mx-auto px-6 py-10">
       <div class="flex items-center justify-between mb-8">
-        <h2 class="text-2xl font-semibold tracking-tight text-gray-1000">My Boards</h2>
+        <h2 class="text-2xl font-bold tracking-tight text-gray-1000">My Boards</h2>
         <div class="flex items-center gap-3">
           <AiGenerateButton
             :remaining="usage?.remaining"
@@ -71,9 +71,9 @@ async function handleAiGenerate(prompt: string) {
         </div>
       </div>
 
-      <div v-if="loading" class="text-sm text-gray-700">Loading...</div>
+      <div v-if="loading" class="text-xs font-light leading-relaxed text-slate-500">Loading...</div>
 
-      <div v-else-if="boards.length === 0" class="text-sm text-gray-700">
+      <div v-else-if="boards.length === 0" class="text-xs font-light leading-relaxed text-slate-500">
         No boards yet. Create one to get started.
       </div>
 
@@ -85,7 +85,7 @@ async function handleAiGenerate(prompt: string) {
           @click="router.push(`/boards/${board.id}`)"
         >
           <h3 class="text-sm font-medium text-gray-1000">{{ board.name }}</h3>
-          <p class="mt-1 text-xs text-gray-700">
+          <p class="mt-1 text-xs font-light leading-relaxed text-slate-500">
             {{ board._count.columns }} columns · {{ board._count.boardMembers }} members
           </p>
         </div>

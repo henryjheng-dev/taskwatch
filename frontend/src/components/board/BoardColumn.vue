@@ -67,9 +67,9 @@ function onDrop(e: DragEvent) {
     @drop="onDrop"
   >
     <div class="flex items-center gap-2 mb-3">
-      <h3 class="text-sm font-normal text-gray-900 leading-5">{{ column.name }}</h3>
+      <h3 class="text-sm font-medium text-gray-900 leading-5">{{ column.name }}</h3>
       <span
-        class="inline-flex items-center px-[6px] py-[2px] text-xs font-normal text-gray-900 bg-gray-100 rounded-sm leading-4"
+        class="inline-flex items-center px-[6px] py-[2px] text-xs font-light leading-relaxed text-gray-700 bg-gray-100 rounded-sm"
       >
         {{ column.tasks.length }}
       </span>
@@ -85,7 +85,7 @@ function onDrop(e: DragEvent) {
     </div>
 
     <button
-      class="mt-3 flex items-center gap-[6px] h-8 px-2 text-sm font-normal text-gray-900 rounded-sm hover:bg-black/5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+      class="mt-3 flex items-center gap-[6px] h-8 px-2 text-sm font-medium text-gray-900 rounded-sm hover:bg-black/5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
       @click="emit('addTask', column.id)"
     >
       <svg class="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">

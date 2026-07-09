@@ -20,7 +20,7 @@ const typeStyles: Record<string, string> = {
         class="flex items-center gap-2 rounded-lg border px-4 py-3 shadow-lg"
         :class="typeStyles[toast.type]"
       >
-        <span class="text-sm">{{ toast.message }}</span>
+        <span class="text-xs font-light leading-relaxed">{{ toast.message }}</span>
         <button
           class="ml-2 text-current opacity-50 hover:opacity-100"
           @click="toastStore.remove(toast.id)"

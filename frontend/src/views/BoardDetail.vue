@@ -92,7 +92,7 @@ async function handleAddColumn() {
           </svg>
         </button>
 
-        <nav class="flex items-center gap-2 text-sm leading-5">
+        <nav class="flex items-center gap-2 text-sm font-medium leading-5">
           <svg class="w-4 h-4 text-gray-700" viewBox="0 0 16 16" fill="none">
             <path
               d="M2 3.5A1.5 1.5 0 013.5 2h3.88a1.5 1.5 0 011.06.44l3.12 3.12a1.5 1.5 0 01.44 1.06V12.5a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 012 12.5v-9z"
@@ -105,7 +105,7 @@ async function handleAddColumn() {
         </nav>
 
         <span
-          class="inline-flex items-center px-2 py-0.5 text-[13px] font-normal leading-4 text-white bg-gray-1000 rounded-full"
+          class="inline-flex items-center px-2 py-0.5 text-[13px] font-light leading-relaxed text-white bg-gray-1000 rounded-full"
         >
           Board
         </span>
@@ -145,7 +145,7 @@ async function handleAddColumn() {
     <!-- Page Title & Toolbar -->
     <div class="flex items-center justify-between px-6 h-16 shrink-0">
       <h1
-        class="text-2xl font-semibold tracking-tight text-gray-1000 leading-8"
+        class="text-2xl font-bold tracking-tight text-gray-1000 leading-8"
         style="letter-spacing: -0.96px"
       >
         {{ boardStore.board?.name || 'New Document' }}
@@ -153,9 +153,9 @@ async function handleAddColumn() {
 
       <div class="flex items-center gap-4">
         <button
-          class="inline-flex items-center gap-1.5 text-sm font-normal leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          class="inline-flex items-center gap-1.5 text-sm font-medium leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
-          <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
+           <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
             <rect
               x="2"
               y="2"
@@ -200,7 +200,7 @@ async function handleAddColumn() {
           Board view
         </button>
         <button
-          class="inline-flex items-center gap-1.5 text-sm font-normal leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          class="inline-flex items-center gap-1.5 text-sm font-medium leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
             <path
@@ -219,7 +219,7 @@ async function handleAddColumn() {
           Filter
         </button>
         <button
-          class="inline-flex items-center gap-1.5 text-sm font-normal leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          class="inline-flex items-center gap-1.5 text-sm font-medium leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
             <path

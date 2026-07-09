@@ -27,6 +27,7 @@ interface GeminiColumn {
     title: string;
     description?: string;
     priority: 'low' | 'medium' | 'high';
+    dueDate?: string;
   }[];
 }
 
@@ -70,6 +71,11 @@ const boardResponseSchema = {
                   type: Type.STRING,
                   enum: ['low', 'medium', 'high'],
                   description: '任務優先級',
+                },
+                dueDate: {
+                  type: Type.STRING,
+                  description: '截止日期（YYYY-MM-DD 格式，可選）',
+                  nullable: true,
                 },
               },
               required: ['title', 'priority'],
@@ -124,7 +130,8 @@ export class AiService {
 - 最多 5 個欄位
 - 每個欄位最多 5 個任務
 - 使用繁體中文回應（若使用者用英文輸入則用英文）
-- 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）`;
+- 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）
+- 若使用者有提到時程或截止日期，請為相關任務加上 dueDate（格式 YYYY-MM-DD）`;
 
     let parsedBoard: GeminiBoardSchema;
     try {
@@ -185,9 +192,8 @@ export class AiService {
             data: col.tasks.map((task, taskIndex) => ({
               title: task.title,
               description: task.description ?? null,
-              // priority 已由 responseSchema 的 enum 限制為 low/medium/high，
-              // toUpperCase() 後必定落在 Priority enum 範圍內，不會再有非法值風險
               priority: task.priority.toUpperCase() as Priority,
+              dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
               position: taskIndex,
               columnId: createdCol.id,
               createdBy: userId,

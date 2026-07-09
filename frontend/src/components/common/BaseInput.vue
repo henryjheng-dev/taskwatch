@@ -40,6 +40,6 @@ function onInput(e: Event) {
       ]"
       @input="onInput"
     />
-    <p v-if="error" class="text-sm text-red-800">{{ error }}</p>
+    <p v-if="error" class="text-xs font-light leading-relaxed text-red-800">{{ error }}</p>
   </div>
 </template>

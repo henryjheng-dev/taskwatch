@@ -1,92 +1,92 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import BaseModal from '../common/BaseModal.vue'
-import BaseButton from '../common/BaseButton.vue'
-import type { Priority } from '../../types'
+import { ref, watch, nextTick } from 'vue';
+import BaseModal from '../common/BaseModal.vue';
+import BaseButton from '../common/BaseButton.vue';
+import type { Priority } from '../../types';
 
 function today() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const props = defineProps<{
-  show: boolean
-  boardId: number
-  columnId: number
-}>()
+  show: boolean;
+  boardId: number;
+  columnId: number;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  created: []
-}>()
+  close: [];
+  created: [];
+}>();
 
-const title = ref('')
-const description = ref('')
-const priority = ref<Priority>('MEDIUM')
-const dueDate = ref(today())
-const loading = ref(false)
-const error = ref('')
-const editorRef = ref<HTMLDivElement | null>(null)
+const title = ref('');
+const description = ref('');
+const priority = ref<Priority>('MEDIUM');
+const dueDate = ref(today());
+const loading = ref(false);
+const error = ref('');
+const editorRef = ref<HTMLDivElement | null>(null);
 
 function syncDescription() {
   if (editorRef.value) {
-    description.value = editorRef.value.innerHTML
+    description.value = editorRef.value.innerHTML;
   }
 }
 
 function execCmd(command: string, value?: string) {
-  document.execCommand(command, false, value)
-  editorRef.value?.focus()
-  syncDescription()
+  document.execCommand(command, false, value);
+  editorRef.value?.focus();
+  syncDescription();
 }
 
 watch(
   () => props.show,
   (val) => {
     if (val) {
-      title.value = ''
-      description.value = ''
-      priority.value = 'MEDIUM'
-      dueDate.value = today()
-      error.value = ''
+      title.value = '';
+      description.value = '';
+      priority.value = 'MEDIUM';
+      dueDate.value = today();
+      error.value = '';
       nextTick(() => {
         if (editorRef.value) {
-          editorRef.value.innerHTML = ''
+          editorRef.value.innerHTML = '';
         }
-      })
+      });
     }
   },
-)
+);
 
 async function handleCreate() {
   if (!title.value.trim()) {
-    error.value = 'Task title is required'
-    return
+    error.value = 'Task title is required';
+    return;
   }
 
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = '';
   try {
-    const { useBoardStore } = await import('../../stores/board')
-    const boardStore = useBoardStore()
+    const { useBoardStore } = await import('../../stores/board');
+    const boardStore = useBoardStore();
 
     await boardStore.createTask(props.boardId, props.columnId, {
       title: title.value.trim(),
       description: description.value || undefined,
       priority: priority.value,
       dueDate: dueDate.value || undefined,
-    })
-    emit('created')
+    });
+    emit('created');
   } catch (err: any) {
-    const msg = err.response?.data?.message
-    error.value = Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to create task'
+    const msg = err.response?.data?.message;
+    error.value = Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to create task';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function handleClose() {
-  emit('close')
+  emit('close');
 }
 </script>
 
@@ -102,7 +102,7 @@ function handleClose() {
           placeholder="What needs to be done?"
           @input="title = ($event.target as HTMLInputElement).value"
         />
-        <p v-if="error" class="text-sm text-red-800">{{ error }}</p>
+        <p v-if="error" class="text-xs font-light leading-relaxed text-red-800">{{ error }}</p>
       </div>
 
       <div class="space-y-1">
@@ -127,7 +127,7 @@ function handleClose() {
             <span class="w-px h-4 mx-0.5 bg-black/8" />
             <button
               type="button"
-              class="w-7 h-7 flex items-center justify-center text-sm font-bold text-gray-900 rounded hover:bg-black/5 transition-colors"
+              class="w-7 h-7 flex items-center justify-center text-sm font-bold tracking-tight text-gray-900 rounded hover:bg-black/5 transition-colors"
               title="Bold"
               @click="execCmd('bold')"
             >
@@ -170,7 +170,7 @@ function handleClose() {
           <div
             ref="editorRef"
             contenteditable="true"
-            class="editor px-3 py-2 text-sm text-gray-1000 min-h-80 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-600"
+            class="editor px-3 py-2 text-xs font-light leading-relaxed text-slate-850min-h-80 outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-600"
             data-placeholder="Add a description..."
             @input="syncDescription"
           />
@@ -201,9 +201,7 @@ function handleClose() {
       </div>
 
       <div class="flex justify-between pt-2">
-        <BaseButton variant="error" size="sm" @click="handleClose">
-          Cancel
-        </BaseButton>
+        <BaseButton variant="error" size="sm" @click="handleClose"> Cancel </BaseButton>
         <BaseButton variant="primary" :loading="loading" @click="handleCreate">Create</BaseButton>
       </div>
     </div>
@@ -213,19 +211,22 @@ function handleClose() {
 <style scoped>
 .editor :deep(h1) {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.3;
   margin: 0.5em 0 0.25em;
 }
 .editor :deep(h2) {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.35;
   margin: 0.4em 0 0.2em;
 }
 .editor :deep(h3) {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.4;
   margin: 0.3em 0 0.15em;
 }

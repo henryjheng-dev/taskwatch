@@ -58,7 +58,7 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <div v-if="loadError" class="text-sm text-red-800 text-center">
+    <div v-if="loadError" class="text-xs font-light leading-relaxed text-red-800 text-center">
       Google 登入載入失敗
     </div>
     <div

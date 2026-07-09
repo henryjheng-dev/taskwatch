@@ -37,7 +37,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           :class="maxWidth"
         >
           <div v-if="title" class="mb-4 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900">{{ title }}</h2>
+            <h2 class="text-lg font-medium text-gray-900">{{ title }}</h2>
             <button
               class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               @click="emit('close')"

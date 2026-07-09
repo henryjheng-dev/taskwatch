@@ -22,6 +22,6 @@ defineEmits<{
       />
     </svg>
     <span>AI</span>
-    <span v-if="remaining !== undefined" class="text-xs text-blue-600">({{ remaining }})</span>
+    <span v-if="remaining !== undefined" class="text-xs font-light leading-relaxed text-blue-600">({{ remaining }})</span>
   </button>
 </template>
