@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted } from 'vue'
+import { useAuthStore } from './stores/auth'
+import BaseToast from './components/common/BaseToast.vue'
+
+const authStore = useAuthStore()
+
+onMounted(() => {
+  authStore.init()
+})
 </script>
 
 <template>
-  <HelloWorld />
+  <router-view />
+  <BaseToast />
 </template>

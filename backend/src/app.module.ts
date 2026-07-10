@@ -5,12 +5,14 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { BoardsModule } from './boards/boards.module';
 import { ColumnsModule } from './columns/columns.module';
 import { TasksModule } from './tasks/tasks.module';
 import { LabelsModule } from './labels/labels.module';
+import { RedisModule } from './redis/redis.module';
+import { AiModule } from './ai/ai.module';
+import { CustomThrottlerGuard } from './common/guards/throttler.guard';
 import Joi from 'joi';
 
 @Module({
@@ -37,13 +39,14 @@ import Joi from 'joi';
         // min(32) = 256-bit 最低安全長度，符合 OWASP JWT Cheat Sheet
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_EXPIRES_IN: Joi.string().required(),
-        JWT_REFRESH_SECRET: Joi.string().min(32).required(),
         JWT_REFRESH_EXPIRES_IN: Joi.string().required(),
 
         // ── Google OAuth ──────────────────────────────────────────
         GOOGLE_CLIENT_ID: Joi.string().required(),
-        GOOGLE_CLIENT_SECRET: Joi.string().required(),
-        GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
+
+        // ── Gemini AI ────────────────────────────────────────────
+        GEMINI_API_KEY: Joi.string().required(),
+        AI_DAILY_LIMIT: Joi.number().integer().min(1).default(5),
 
         // ── Redis ─────────────────────────────────────────────────
         REDIS_HOST: Joi.string().required(),
@@ -80,13 +83,15 @@ import Joi from 'joi';
     ColumnsModule,
     TasksModule,
     LabelsModule,
+    RedisModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard, // 自訂錯誤訊息（中文）
     },
   ],
 })

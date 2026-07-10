@@ -5,8 +5,9 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
+import { RefreshTokensRepository } from './refresh-tokens.repository';
+import { OAuth2Client } from 'google-auth-library';
 
 @Module({
   imports: [
@@ -19,7 +20,17 @@ import { PrismaModule } from '../prisma/prisma.module';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy],
+  providers: [
+    AuthService,
+    RefreshTokensRepository,
+    JwtStrategy,
+    {
+      provide: OAuth2Client,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        new OAuth2Client(configService.getOrThrow<string>('GOOGLE_CLIENT_ID')),
+    },
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })

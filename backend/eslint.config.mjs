@@ -6,7 +6,13 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    // 💡 兔哥改了這裡：把 prisma.config.ts 和 dist 等編譯產物一起放進全局忽略清單
+    ignores: [
+      'eslint.config.mjs',
+      'prisma.config.ts',
+      'dist/**/*',
+      'node_modules/**/*',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

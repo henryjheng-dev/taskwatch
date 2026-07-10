@@ -5,64 +5,52 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomBytes } from 'node:crypto';
-import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
+import bcrypt from 'bcrypt';
+import ms, { type StringValue } from 'ms';
 import { PrismaService } from '../prisma/prisma.service';
+import { RefreshTokensRepository } from './refresh-tokens.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { OAuth2Client } from 'google-auth-library';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import type { TokenPair, LoginResponse } from './interface';
 import { AuthProvider, Prisma } from '@/generated/prisma/client';
 
 /** bcrypt 雜湊強度 */
 const BCRYPT_ROUNDS = 12;
 
-interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-}
-
-/**
- * 將 "15m", "7d" 等 duration 字串轉換為未來的 Date 物件。
- * 目的：計算 RefreshToken 的 expiresAt 欄位存入 DB。
- */
-function toExpiresAt(duration: string): Date {
-  const units: Record<string, number> = {
-    s: 1_000,
-    m: 60 * 1_000,
-    h: 60 * 60 * 1_000,
-    d: 24 * 60 * 60 * 1_000,
-  };
-  const match = duration.match(/^(\d+)([smhd])$/);
-  if (!match) throw new Error(`時間格式錯誤: "${duration}"`);
-  return new Date(Date.now() + parseInt(match[1], 10) * units[match[2]]);
-}
-
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly refreshTokensRepo: RefreshTokensRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly googleClient: OAuth2Client,
   ) {}
 
   /**
-   * 用 Email + 密碼 建立帳號。
-   * 若 Email 已存在拋 ConflictException（409），
-   * 成功後立即回傳第一組 token pair（免除二次登入）。
+   * 註冊新帳號，並回傳 Token Pair。
+   * 若 Email 已被註冊，會丟出 ConflictException。
+   * 用passwordHash存密碼，避免明文存入 DB。
+   * authProvider 設為 EMAIL，表示此帳號是用 Email/密碼方式註冊的。
    */
-  async register(dto: RegisterDto): Promise<TokenPair> {
+  async register(dto: RegisterDto): Promise<LoginResponse> {
     try {
       const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
       const user = await this.prisma.user.create({
         data: {
           name: dto.name,
           email: dto.email,
-          passwordHash: passwordHash,
+          passwordHash,
           authProvider: AuthProvider.EMAIL,
         },
-        select: { id: true, email: true },
+        select: { id: true, name: true, email: true },
       });
-      return this.generateTokens(user.id, user.email);
+      const tokens = await this.generateTokens(user.id, user.email);
+      return { ...tokens, user };
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -73,14 +61,25 @@ export class AuthService {
       throw error;
     }
   }
-
   /**
-   * 用 Email + 密碼 登入。
-   * 刻意使用相同錯誤訊息（帳號或密碼錯誤）防止 User Enumeration 攻擊。
+   * user 是透過prisma查詢出來的資料，是關於使用者的資訊，包含id、name、email、passwordHash、authProvider等欄位。
+   * 這個 if 判斷的目的是檢查使用者是否存在、是否使用 EMAIL 作為認證提供者，以及是否有設定密碼。
+   * 具體來說：
+   * - !user：如果 user 為 null 或 undefined，表示找不到該使用者。
+   * - user.authProvider !== AuthProvider.EMAIL：如果使用者的認證提供者不是 EMAIL，表示該使用者可能是透過其他方式（例如 Google）註冊的。
+   * - !user.passwordHash：如果使用者沒有設定密碼，表示該使用者無法透過密碼登入。
+   * 如果以上三個條件其中之一成立，就會丟出 UnauthorizedException('帳號或密碼錯誤')，表示登入失敗。
    */
-  async login(dto: LoginDto): Promise<TokenPair> {
+  async login(dto: LoginDto): Promise<LoginResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        passwordHash: true,
+        authProvider: true,
+      },
     });
 
     if (
@@ -96,134 +95,147 @@ export class AuthService {
       throw new UnauthorizedException('帳號或密碼錯誤');
     }
 
-    return this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email);
+    return {
+      ...tokens,
+      user: { id: user.id, name: user.name, email: user.email },
+    };
   }
 
   /**
-   * 用舊的 Refresh Token 換一組新的 Token Pair（Rotation 機制）。
-   * 收到請求後立即 revoke 舊 token，避免 replay 攻擊。
+   * refresh token 是用來換取新的 access token 的，當 access token 過期時，可以使用 refresh token 來獲取新的 access token，而不需要重新登入。
+   * refresh token 的有效期通常比 access token 長，並且應該被安全地存儲（例如 httpOnly cookie），以防止被竊取。
+   * revoked 是一個物件，包含了被撤銷的 refresh token 的 id 和對應的 userId，如果該 token 不存在或已被撤銷，則為 null。
+   * revokeOne 方法會嘗試撤銷傳入的 refresh token，如果成功，表示該 token 是有效的；如果失敗，表示該 token 不存在、已過期或已被撤銷。
+   * refreshTokensRepo 是一個用來操作 refresh token 的資料庫存取物件，它提供了 save、verify、revokeOne、revokeAll、findRevoked 等方法。
+   * 這個方法的流程如下：
+   * 1. 先嘗試撤銷傳入的 refresh token，如果成功，表示該 token 是有效的。
+   * 2. 如果撤銷失敗，表示該 token 不存在、已過期或已被撤銷，這時會檢查該 token 是否曾經被撤銷過，如果是，表示可能是重複使用或 token 失竊，會強制全登出。
+   * 3. 如果撤銷成功，就會查詢該 token 對應的使用者資訊，並生成新的 token pair（access token 和 refresh token）。
+   * 4. 最後回傳新的 token pair。
+   * @param rawRefreshToken 從 httpOnly cookie 中取得的 refresh token
+   * @returns 新的 access token 和 refresh token
+   * @throws UnauthorizedException 如果 refresh token 無效或已過期
    */
   async refreshTokens(rawRefreshToken: string): Promise<TokenPair> {
-    const tokenHash = createHash('sha256')
-      .update(rawRefreshToken)
-      .digest('hex');
+    const revoked = await this.refreshTokensRepo.revokeOne(rawRefreshToken);
 
-    const stored = await this.prisma.refreshToken.findFirst({
-      where: { tokenHash },
-    });
-
-    if (!stored || stored.revokedAt !== null || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token 無效或已過期');
+    if (!revoked) {
+      // token 不存在、已過期，或已被撤銷
+      // 若是已撤銷 → 可能是重複使用或 token 失竊 → 強制全登出
+      const reused = await this.refreshTokensRepo.findRevoked(rawRefreshToken);
+      if (reused) {
+        await this.refreshTokensRepo.revokeAll(reused.userId);
+      }
+      throw new UnauthorizedException('Refresh Token 無效或已過期');
     }
 
-    // 先 revoke 舊 token（Token Rotation）
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
-    });
-
     const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: stored.userId },
+      where: { id: revoked.userId },
+      select: { id: true, email: true },
     });
 
     return this.generateTokens(user.id, user.email);
   }
 
-  /**
-   * 登出：revoke 該使用者所有尚未撤銷的 Refresh Token。
-   * 確保所有裝置同步登出（single-user logout）。
-   */
   async logout(userId: number): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await this.refreshTokensRepo.revokeAll(userId);
   }
 
-  /**
-   * Google OAuth callback 時呼叫。
-   * 若 Email 已存在但尚未綁定 googleId，則補綁；
-   * 若完全不存在，則自動建立 Google 帳號。
-   */
-  async validateGoogleUser(
-    googleId: string,
-    email: string,
-    name: string,
-  ): Promise<{ id: number; email: string }> {
-    let user = await this.prisma.user.findFirst({
-      where: { OR: [{ googleId }, { email }] },
+  async googleLogin(dto: GoogleLoginDto): Promise<LoginResponse> {
+    const clientId = this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID');
+
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken: dto.credential,
+      audience: clientId,
     });
 
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: { name, email, googleId, authProvider: AuthProvider.GOOGLE },
-      });
-    } else if (!user.googleId) {
-      // Email 帳號首次使用 Google 登入，補綁 googleId
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { googleId },
-      });
+    const payload = ticket.getPayload();
+    if (!payload?.email) {
+      throw new UnauthorizedException('Google 驗證失敗：無法取得 Email');
     }
 
-    return { id: user.id, email: user.email };
-  }
+    const { sub: googleId, email, name } = payload;
 
-  /**
-   * Google OAuth callback 專用：validateGoogleUser 確認身份後，
-   * 由 Controller 呼叫此方法取得 token pair。
-   * 獨立對外公開以避免 Controller 直接存取私有方法。
-   */
-  issueTokensForUser(userId: number, email: string): Promise<TokenPair> {
-    return this.generateTokens(userId, email);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        authProvider: true,
+        googleId: true,
+      },
+    });
+
+    if (existingUser) {
+      if (existingUser.authProvider === AuthProvider.EMAIL) {
+        throw new UnauthorizedException(
+          '此 Email 已用密碼方式註冊，請改用 Email 登入',
+        );
+      }
+
+      if (!existingUser.googleId) {
+        await this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: { googleId },
+        });
+      }
+
+      const tokens = await this.generateTokens(
+        existingUser.id,
+        existingUser.email,
+      );
+      return {
+        ...tokens,
+        user: {
+          id: existingUser.id,
+          name: existingUser.name,
+          email: existingUser.email,
+        },
+      };
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        name: name ?? '',
+        email,
+        googleId,
+        authProvider: AuthProvider.GOOGLE,
+      },
+      select: { id: true, name: true, email: true },
+    });
+
+    const tokens = await this.generateTokens(user.id, user.email);
+    return { ...tokens, user };
   }
 
   // ──────────────────────────── Private ────────────────────────────
 
-  /**
-   * 產生 Access Token + Refresh Token。
-   *
-   * - Access Token：JWT，帶 sub/email，短效（15m）
-   * - Refresh Token：random 40-byte hex 明文回傳給 client，
-   *   SHA-256 hash 存入 DB（不存明文，防資料庫洩漏）
-   */
   private async generateTokens(
     userId: number,
     email: string,
   ): Promise<TokenPair> {
     const jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
     const jwtExpiresIn =
-      this.configService.getOrThrow<string>('JWT_EXPIRES_IN');
-    const refreshSecret =
-      this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
-    const refreshExpiresIn = this.configService.getOrThrow<string>(
+      this.configService.getOrThrow<StringValue>('JWT_EXPIRES_IN');
+    const refreshExpiresIn = this.configService.getOrThrow<StringValue>(
       'JWT_REFRESH_EXPIRES_IN',
     );
 
     const payload: JwtPayload = { sub: userId, email };
     const rawRefreshToken = randomBytes(40).toString('hex');
 
-    const signOptions = { secret: jwtSecret, expiresIn: jwtExpiresIn };
-    const accessToken = await this.jwtService.signAsync(
-      payload,
-      // expiresIn 的 StringValue 型別來自 ms 套件；透過中間變數繞過型別限制
-      signOptions as Parameters<typeof this.jwtService.signAsync>[1],
-    );
-
-    // refresh token 不用 JWT，只是隨機亂數；expiry 由 DB 管理
-    void refreshSecret; // reserved for future refresh-token JWT signing if needed
-
-    const tokenHash = createHash('sha256')
-      .update(rawRefreshToken)
-      .digest('hex');
-
-    await this.prisma.refreshToken.create({
-      data: {
-        userId,
-        tokenHash,
-        expiresAt: toExpiresAt(refreshExpiresIn),
-      },
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: jwtSecret,
+      expiresIn: jwtExpiresIn,
     });
+
+    await this.refreshTokensRepo.save(
+      userId,
+      rawRefreshToken,
+      new Date(Date.now() + ms(refreshExpiresIn)),
+    );
 
     return { accessToken, refreshToken: rawRefreshToken };
   }
