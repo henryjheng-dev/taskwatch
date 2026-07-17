@@ -8,6 +8,7 @@ import BaseButton from '../components/common/BaseButton.vue';
 import CreateBoardModal from '../components/board/CreateBoardModal.vue';
 import AiGenerateButton from '../components/ai/AiGenerateButton.vue';
 import AiGenerateModal from '../components/ai/AiGenerateModal.vue';
+import UserMenu from '../components/common/UserMenu.vue';
 import { useAiGenerate } from '../composables/useAiGenerate';
 
 const router = useRouter();
@@ -55,8 +56,9 @@ async function handleAiGenerate(prompt: string) {
 
 <template>
   <div class="min-h-screen bg-bg-200">
-    <header class="h-14 bg-white border-b border-black/8 flex items-center px-6">
+    <header class="h-14 bg-white border-b border-black/8 flex items-center justify-between px-6">
       <h1 class="text-sm font-bold tracking-tight text-gray-1000">TaskWatch</h1>
+      <UserMenu />
     </header>
 
     <main class="max-w-5xl mx-auto px-6 py-10">

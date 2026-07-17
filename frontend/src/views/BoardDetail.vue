@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoardStore } from '../stores/board';
 import { useToastStore } from '../stores/toast';
 import BoardColumn from '../components/board/BoardColumn.vue';
 import TaskCreateForm from '../components/board/TaskCreateForm.vue';
 import TaskDetailModal from '../components/board/TaskDetailModal.vue';
+import UserMenu from '../components/common/UserMenu.vue';
 import { useDragAndDrop } from '../composables/useDragAndDrop';
 
 const route = useRoute();
@@ -38,11 +39,18 @@ function handleCloseTaskDetail() {
 }
 
 onMounted(async () => {
+  // 清空上一張看板的殘留資料，避免畫面閃爍
+  boardStore.$reset();
   try {
     await boardStore.fetchBoard(boardId.value);
   } catch {
     router.push('/boards');
   }
+});
+
+// 離開頁面時主動清除看板資料，不佔用記憶體
+onUnmounted(() => {
+  boardStore.$reset();
 });
 
 const { onDrop } = useDragAndDrop();
@@ -73,8 +81,25 @@ async function handleAddColumn() {
 
 <template>
   <div class="min-h-screen bg-bg-200 flex flex-col">
-    <!-- Top Navigation Bar -->
-    <header
+    <!-- 載入中 → 顯示骨架 -->
+    <div v-if="boardStore.loading" class="animate-pulse px-6">
+        <div class="h-14" />
+        <div class="h-16 flex items-center">
+          <div class="h-8 w-48 bg-black/5 rounded-sm" />
+        </div>
+        <div class="flex gap-6 pt-3 overflow-x-auto">
+          <div v-for="i in 3" :key="i" class="w-74 shrink-0">
+            <div class="h-6 w-24 bg-black/5 rounded-sm mb-4" />
+            <div class="space-y-3">
+              <div v-for="j in 4" :key="j" class="h-24 bg-black/5 rounded-lg" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 載入完成 → 顯示看板內容 -->
+      <div v-else-if="boardStore.board" class="flex flex-col flex-1">
+        <!-- Top Navigation Bar -->
+        <header
       class="h-14 bg-white border-b border-black/8 flex items-center justify-between px-6 shrink-0"
     >
       <div class="flex items-center gap-2">
@@ -126,19 +151,7 @@ async function handleAddColumn() {
           </svg>
         </button>
 
-        <button
-          class="h-10 inline-flex items-center gap-2 px-2.5 text-sm font-medium leading-5 text-gray-1000 bg-white border border-black/8 rounded-sm hover:border-black/10 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M8 1v14M1 8h14"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-          Create
-        </button>
+        <UserMenu />
       </div>
     </header>
 
@@ -150,89 +163,6 @@ async function handleAddColumn() {
       >
         {{ boardStore.board?.name || 'New Document' }}
       </h1>
-
-      <div class="flex items-center gap-4">
-        <button
-          class="inline-flex items-center gap-1.5 text-sm font-medium leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-           <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
-            <rect
-              x="2"
-              y="2"
-              width="5"
-              height="5"
-              rx="0.5"
-              stroke="currentColor"
-              stroke-width="1.2"
-              fill="none"
-            />
-            <rect
-              x="9"
-              y="2"
-              width="5"
-              height="5"
-              rx="0.5"
-              stroke="currentColor"
-              stroke-width="1.2"
-              fill="none"
-            />
-            <rect
-              x="2"
-              y="9"
-              width="5"
-              height="5"
-              rx="0.5"
-              stroke="currentColor"
-              stroke-width="1.2"
-              fill="none"
-            />
-            <rect
-              x="9"
-              y="9"
-              width="5"
-              height="5"
-              rx="0.5"
-              stroke="currentColor"
-              stroke-width="1.2"
-              fill="none"
-            />
-          </svg>
-          Board view
-        </button>
-        <button
-          class="inline-flex items-center gap-1.5 text-sm font-medium leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M2 4h12M2 8h8M2 12h10"
-              stroke="currentColor"
-              stroke-width="1.2"
-              stroke-linecap="round"
-            />
-            <path
-              d="M6 4l-2-2M6 4l-2 2"
-              stroke="currentColor"
-              stroke-width="1.2"
-              stroke-linecap="round"
-            />
-          </svg>
-          Filter
-        </button>
-        <button
-          class="inline-flex items-center gap-1.5 text-sm font-medium leading-5 text-gray-900 hover:bg-black/5 rounded-sm px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M4 10l4 4 4-4M4 6l4-4 4 4"
-              stroke="currentColor"
-              stroke-width="1.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-          Sort
-        </button>
-      </div>
     </div>
 
     <!-- Board Columns -->
@@ -283,5 +213,6 @@ async function handleAddColumn() {
       @updated="handleCloseTaskDetail"
       @deleted="handleCloseTaskDetail"
     />
+    </div>
   </div>
 </template>
