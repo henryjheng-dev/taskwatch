@@ -47,7 +47,7 @@ router.beforeEach((to, _from) => {
     return { name: 'Login' };
   }
 
-  if ((to.name === 'Login' || to.name === 'Register') && authStore.isAuthenticated) {
+  if (to.name === 'Login' && authStore.isAuthenticated) {
     // 3. 原本的 next({ name: 'BoardList' }) 改成直接 return
     return { name: 'BoardList' };
   }
