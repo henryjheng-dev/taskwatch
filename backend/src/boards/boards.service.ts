@@ -47,6 +47,7 @@ export class BoardsService {
     return this.prisma.board.findMany({
       where: {
         boardMembers: { some: { userId } },
+        archivedAt: null,
       },
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -54,6 +55,28 @@ export class BoardsService {
         name: true,
         backgroundColor: true,
         ownerId: true,
+        archivedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { columns: true, boardMembers: true } },
+      },
+    });
+  }
+
+  /** 列出我有加入的「已封存」看板 */
+  findArchived(userId: number): Promise<any> {
+    return this.prisma.board.findMany({
+      where: {
+        boardMembers: { some: { userId } },
+        archivedAt: { not: null },
+      },
+      orderBy: { archivedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        backgroundColor: true,
+        ownerId: true,
+        archivedAt: true,
         createdAt: true,
         updatedAt: true,
         _count: { select: { columns: true, boardMembers: true } },
@@ -101,6 +124,7 @@ export class BoardsService {
   /** 更新看板設定，只有 ADMIN 成員可執行。 */
   async update(boardId: number, userId: number, dto: UpdateBoardDto) {
     await this.assertAdmin(boardId, userId);
+    await this.assertNotArchived(boardId);
     return this.prisma.board.update({
       where: { id: boardId },
       data: dto,
@@ -117,6 +141,24 @@ export class BoardsService {
       throw new ForbiddenException('只有看板擁有者才能刪除看板');
     }
     await this.prisma.board.delete({ where: { id: boardId } });
+  }
+
+  /** 封存看板，ADMIN 或 owner 可執行。 */
+  async archive(boardId: number, userId: number) {
+    await this.assertAdmin(boardId, userId);
+    return this.prisma.board.update({
+      where: { id: boardId },
+      data: { archivedAt: new Date() },
+    });
+  }
+
+  /** 恢復看板，ADMIN 或 owner 可執行。 */
+  async restore(boardId: number, userId: number) {
+    await this.assertAdmin(boardId, userId);
+    return this.prisma.board.update({
+      where: { id: boardId },
+      data: { archivedAt: null },
+    });
   }
 
   // ──────────────────────────── Members ──────────────────────────────────
@@ -140,6 +182,7 @@ export class BoardsService {
    */
   async addMember(boardId: number, requesterId: number, dto: AddMemberDto) {
     await this.assertAdmin(boardId, requesterId);
+    await this.assertNotArchived(boardId);
 
     const targetUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -167,6 +210,7 @@ export class BoardsService {
     dto: UpdateMemberRoleDto,
   ) {
     await this.assertAdmin(boardId, requesterId);
+    await this.assertNotArchived(boardId);
 
     // 防止 ADMIN 自己把自己降級，導致看板無管理員
     if (targetUserId === requesterId && dto.role !== BoardRole.ADMIN) {
@@ -192,6 +236,7 @@ export class BoardsService {
       where: { id: boardId },
     });
     if (!board) throw new NotFoundException('看板不存在');
+    await this.assertNotArchived(boardId);
 
     if (board.ownerId === targetUserId) {
       throw new ForbiddenException('看板擁有者無法被移除，請先轉讓看板');
@@ -209,6 +254,39 @@ export class BoardsService {
 
     await this.prisma.boardMember.delete({
       where: { boardId_userId: { boardId, userId: targetUserId } },
+    });
+  }
+
+  // ──────────────────────────── Search / Recent ──────────────────────────
+
+  /**
+   * 搜尋使用者有權限查看的看板（透過 boardMembers 關聯）。
+   * 搜尋範圍限於使用者是 owner 或 member 的看板，不可跨權限查詢。
+   */
+  async search(userId: number, query: string) {
+    return this.prisma.board.findMany({
+      where: {
+        boardMembers: { some: { userId } },
+        name: { contains: query },
+        archivedAt: null,
+      },
+      take: 10,
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, name: true, updatedAt: true },
+    });
+  }
+
+  /**
+   * 回傳使用者最近更新的 3 個看板。
+   */
+  async findRecent(userId: number) {
+    return this.prisma.board.findMany({
+      where: {
+        boardMembers: { some: { userId } },
+      },
+      take: 3,
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, name: true, updatedAt: true },
     });
   }
 
@@ -236,5 +314,16 @@ export class BoardsService {
       throw new ForbiddenException('需要 ADMIN 權限才能執行此操作');
     }
     return member;
+  }
+
+  /** 確認看板未封存，否則拋 Forbidden。 */
+  async assertNotArchived(boardId: number) {
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      select: { archivedAt: true },
+    });
+    if (board?.archivedAt) {
+      throw new ForbiddenException('看板已封存，無法執行此操作');
+    }
   }
 }

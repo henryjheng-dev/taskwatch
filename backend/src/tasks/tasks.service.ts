@@ -46,6 +46,7 @@ export class TasksService {
     dto: CreateTaskDto,
   ) {
     await this.boardsService.assertMember(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
     await this.columnsService.assertColumnBelongsToBoard(columnId, boardId);
 
     const position =
@@ -87,7 +88,9 @@ export class TasksService {
   /** 更新任務內容，任務成員（看板成員）皆可編輯。 */
   async update(taskId: number, userId: number, dto: UpdateTaskDto) {
     const task = await this.getTaskWithBoard(taskId);
-    await this.boardsService.assertMember(task.column.boardId, userId);
+    const boardId = task.column.boardId;
+    await this.boardsService.assertMember(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
 
     return this.prisma.task.update({
       where: { id: taskId },
@@ -107,10 +110,12 @@ export class TasksService {
   /** 刪除任務，需要看板 ADMIN 或任務建立者。 */
   async remove(taskId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
+    const boardId = task.column.boardId;
     const member = await this.boardsService.assertMember(
-      task.column.boardId,
+      boardId,
       userId,
     );
+    await this.boardsService.assertNotArchived(boardId);
 
     const isAdmin = member.role === 'ADMIN';
     const isCreator = task.createdBy === userId;
@@ -129,6 +134,7 @@ export class TasksService {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
     await this.boardsService.assertMember(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
 
     const targetColumnId = dto.targetColumnId ?? task.columnId;
 
@@ -154,6 +160,7 @@ export class TasksService {
     const boardId = task.column.boardId;
 
     await this.boardsService.assertMember(boardId, requesterId);
+    await this.boardsService.assertNotArchived(boardId);
 
     // 確認被指派者也是看板成員
     await this.boardsService.assertMember(boardId, targetUserId);
@@ -172,10 +179,12 @@ export class TasksService {
     requesterId: number,
   ) {
     const task = await this.getTaskWithBoard(taskId);
+    const boardId = task.column.boardId;
     const member = await this.boardsService.assertMember(
-      task.column.boardId,
+      boardId,
       requesterId,
     );
+    await this.boardsService.assertNotArchived(boardId);
 
     const isAdmin = member.role === 'ADMIN';
     const isSelf = targetUserId === requesterId;
@@ -193,7 +202,9 @@ export class TasksService {
   /** 為任務貼上標籤（看板成員皆可）。 */
   async attachLabel(taskId: number, labelId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
-    await this.boardsService.assertMember(task.column.boardId, userId);
+    const boardId = task.column.boardId;
+    await this.boardsService.assertMember(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
 
     // 確認 label 屬於同一看板
     await this.labelsService.assertLabelBelongsToBoard(
@@ -211,7 +222,9 @@ export class TasksService {
   /** 移除任務標籤（看板成員皆可）。 */
   async detachLabel(taskId: number, labelId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
-    await this.boardsService.assertMember(task.column.boardId, userId);
+    const boardId = task.column.boardId;
+    await this.boardsService.assertMember(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
 
     await this.prisma.taskLabel.delete({
       where: { taskId_labelId: { taskId, labelId } },

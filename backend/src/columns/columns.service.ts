@@ -19,6 +19,7 @@ export class ColumnsService {
    */
   async create(boardId: number, userId: number, dto: CreateColumnDto) {
     await this.boardsService.assertMember(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
 
     const position =
       dto.position ?? (await this.prisma.column.count({ where: { boardId } }));
@@ -49,6 +50,7 @@ export class ColumnsService {
     dto: UpdateColumnDto,
   ) {
     await this.boardsService.assertAdmin(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
     await this.assertColumnBelongsToBoard(columnId, boardId);
 
     return this.prisma.column.update({
@@ -64,6 +66,7 @@ export class ColumnsService {
    */
   async reorder(boardId: number, userId: number, dto: ReorderColumnsDto) {
     await this.boardsService.assertAdmin(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
 
     await this.prisma.$transaction(
       dto.columns.map(({ id, position }) =>
@@ -81,6 +84,7 @@ export class ColumnsService {
    */
   async remove(boardId: number, columnId: number, userId: number) {
     await this.boardsService.assertAdmin(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
     await this.assertColumnBelongsToBoard(columnId, boardId);
 
     await this.prisma.column.delete({ where: { id: columnId } });

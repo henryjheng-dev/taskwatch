@@ -58,6 +58,7 @@ model Board{
   ownerId Int @map("owner_id")
   name String @db.VarChar(100)
   backgroundColor String   @default("#0079BF") @map("background_color") @db.VarChar(20)
+  archivedAt DateTime? @map("archived_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
