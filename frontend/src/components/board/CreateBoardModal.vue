@@ -48,7 +48,7 @@ async function handleCreate() {
       name: name.value.trim(),
       backgroundColor: selectedColor.value,
     });
-    emit('created', res.data.data.id);
+    emit('created', res.data.id);
     reset();
   } catch (err: any) {
     const msg = err.response?.data?.message;

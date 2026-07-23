@@ -25,22 +25,22 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(data: RegisterRequest) {
     const res = await authApi.register(data)
-    setAuth(res.data.data.accessToken, res.data.data.user)
+    setAuth(res.data.accessToken, res.data.user)
   }
 
   async function login(data: LoginRequest) {
     const res = await authApi.login(data)
-    setAuth(res.data.data.accessToken, res.data.data.user)
+    setAuth(res.data.accessToken, res.data.user)
   }
 
   async function googleLogin(data: GoogleLoginRequest) {
     const res = await authApi.googleLogin(data)
-    setAuth(res.data.data.accessToken, res.data.data.user)
+    setAuth(res.data.accessToken, res.data.user)
   }
 
   async function refresh() {
     const res = await authApi.refresh()
-    const token = res.data.data.accessToken
+    const token = res.data.accessToken
     setAccessToken(token)
     accessToken.value = token
   }

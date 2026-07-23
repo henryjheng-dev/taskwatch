@@ -45,7 +45,12 @@ api.interceptors.request.use(
 )
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 拆箱：後端 TransformInterceptor 包裝的 { success, data, statusCode }
+    // 將 data 提升到 response.data，後續直接用 res.data 取得 payload
+    response.data = response.data.data
+    return response
+  },
   async (error) => {
     const originalRequest = error.config
     const status = error.response?.status
