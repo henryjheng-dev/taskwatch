@@ -1,97 +1,173 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Column } from '../../types'
-import TaskCardDraggable from './TaskCardDraggable.vue'
+import { computed, ref } from 'vue';
+import type { Column, Task, Board } from '../../types';
+import { useBoardStore } from '../../stores/board';
+import { useToastStore } from '../../stores/toast';
+import TaskCard from '../task/TaskCard.vue';
+import { Plus, Ellipsis, Trash2 } from '@lucide/vue';
+import InlineEdit from '../common/InlineEdit.vue';
+import BaseDropdown from '../common/BaseDropdown.vue';
+import ConfirmDialog from '../common/ConfirmDialog.vue';
+import { VueDraggable, type DraggableEvent } from 'vue-draggable-plus';
+import { tasksApi } from '../../api';
 
 const props = defineProps<{
-  column: Column
-  boardId: number
-}>()
+  column: Column;
+  boardId: number;
+  readonly?: boolean;
+}>();
 
 const emit = defineEmits<{
-  addTask: [columnId: number]
-  selectTask: [taskId: number]
-  dropTask: [taskId: number, targetColumnId: number, position: number]
-}>()
+  addTask: [columnId: number];
+  selectTask: [taskId: number];
+  updateColumn: [columnId: number, name: string];
+  deleteColumn: [columnId: number];
+}>();
 
-const dragOver = ref(false)
-const columnRef = ref<HTMLElement | null>(null)
+const boardStore = useBoardStore();
+const toast = useToastStore();
+const showDeleteConfirm = ref(false);
 
-function onDragOver(e: DragEvent) {
-  e.preventDefault()
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'move'
+function handleDeleteColumn() {
+  showDeleteConfirm.value = false;
+  emit('deleteColumn', props.column.id);
+}
+
+const columnTasks = computed({
+  get: () => props.column.tasks,
+  set: (val) => {
+    const col = boardStore.board?.columns.find((c) => c.id === props.column.id);
+    if (col) col.tasks = val;
+  },
+});
+
+let snapshot: Board | null = null;
+
+function onTaskSortStart() {
+  snapshot = boardStore.takeSnapshot();
+}
+
+// 拖曳結束時，使用 newDraggableIndex 而非 newIndex。
+// newIndex 包含 VueDraggable 內所有 DOM 子元素，而 newDraggableIndex
+// 只計算符合 draggable 選擇器的卡片元素，排除其他元素（如 task-ghost）。
+async function onTaskSortEnd(evt: DraggableEvent<Task>) {
+  if (evt.newDraggableIndex == null) return;
+  const targetColumnId = Number(evt.to.dataset.columnId);
+  if (!targetColumnId) return;
+
+  const task = evt.data;
+  const position = evt.newDraggableIndex;
+  task.columnId = targetColumnId;
+  task.position = position;
+
+  try {
+    await tasksApi.move(task.id, { targetColumnId, position });
+  } catch {
+    boardStore.restoreSnapshot(snapshot);
+    toast.error('移動卡片失敗');
   }
-  dragOver.value = true
 }
 
-function onDragLeave(e: DragEvent) {
-  const target = e.relatedTarget as Node | null
-  if (columnRef.value && target && columnRef.value.contains(target)) return
-  dragOver.value = false
-}
-
-function onDrop(e: DragEvent) {
-  e.preventDefault()
-  dragOver.value = false
-
-  const taskId = e.dataTransfer?.getData('text/plain')
-  if (!taskId) return
-
-  const el = columnRef.value
-  if (!el) return
-
-  const taskEls = el.querySelectorAll('[data-task-id]')
-  const mouseY = e.clientY
-  let insertIdx = props.column.tasks.length
-
-  for (let i = 0; i < taskEls.length; i++) {
-    const rect = taskEls[i].getBoundingClientRect()
-    if (mouseY < rect.top + rect.height / 2) {
-      insertIdx = i
-      break
-    }
-  }
-
-  emit('dropTask', Number(taskId), props.column.id, insertIdx)
-}
 </script>
 
 <template>
-  <div
-    ref="columnRef"
-    class="flex-shrink-0 w-[220px] xl:w-[230px] transition-colors duration-150"
-    :class="dragOver ? 'bg-blue-100/50 rounded-sm' : ''"
-    @dragover="onDragOver"
-    @dragleave="onDragLeave"
-    @drop="onDrop"
-  >
-    <div class="flex items-center gap-2 mb-3">
-      <h3 class="text-sm font-medium text-gray-900 leading-5">{{ column.name }}</h3>
+  <div class="shrink-0 w-55 xl:w-57.5 bg-gray-100 rounded-sm p-3 flex flex-col">
+    <div class="flex items-center gap-2 mb-3 column-header">
+      <InlineEdit
+        v-if="!readonly"
+        :model-value="column.name"
+        edit-class="min-w-0 max-w-32 h-7 px-1.5 py-0 text-sm font-medium text-gray-900 leading-7 bg-white border border-gray-300 rounded outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent box-border"
+        @update:model-value="emit('updateColumn', column.id, $event)"
+      >
+        <h3
+          class="h-7 px-1.5 text-sm font-medium text-gray-900 leading-7 flex items-center transition-colors select-none hover:bg-gray-100"
+        >
+          {{ column.name }}
+        </h3>
+      </InlineEdit>
+      <h3
+        v-else
+        class="h-7 px-1.5 text-sm font-medium text-gray-900 leading-7 flex items-center"
+      >
+        {{ column.name }}
+      </h3>
       <span
-        class="inline-flex items-center px-[6px] py-[2px] text-xs font-light leading-relaxed text-gray-700 bg-gray-100 rounded-sm"
+        class="inline-flex items-center px-1.5 py-0.5 text-xs font-light leading-relaxed text-gray-700 bg-gray-100 rounded-sm"
       >
         {{ column.tasks.length }}
       </span>
+      <template v-if="!readonly">
+        <button
+          class="ml-auto flex items-center justify-center w-6 h-6 text-gray-600 hover:text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+          @click="emit('addTask', column.id)"
+        >
+          <Plus class="w-3.5 h-3.5" :stroke-width="1.5" />
+        </button>
+        <BaseDropdown>
+          <template #trigger="{ toggle, isOpen }">
+            <button
+              class="flex items-center justify-center w-6 h-6 text-gray-600 hover:text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+              :class="{ 'bg-black/5': isOpen }"
+              @click="toggle"
+            >
+              <Ellipsis class="w-3.5 h-3.5" :stroke-width="1.5" />
+            </button>
+          </template>
+          <template #dropdown="{ close }">
+          <button
+            class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
+            @click="close(); showDeleteConfirm = true"
+          >
+            <Trash2 class="w-4 h-4" :stroke-width="1.5" />
+            刪除
+          </button>
+          </template>
+        </BaseDropdown>
+      </template>
     </div>
 
-    <div class="flex flex-col gap-2 min-h-[8px]">
-      <TaskCardDraggable
+    <template v-if="!readonly">
+      <ConfirmDialog
+        :show="showDeleteConfirm"
+        @confirm="handleDeleteColumn"
+        @cancel="showDeleteConfirm = false"
+      />
+    </template>
+
+    <!--
+      draggable="[data-task-id]": 只認卡片為可拖曳元素，排除 task-ghost 等非卡片元素。
+      :data-task-id 不是 TaskCard 的 prop，Vue 會 fallthrough 到 root div，
+      讓 SortableJS 能識別此元素為可拖曳項目，且不多產生 DOM 層級。
+    -->
+    <VueDraggable
+      v-model="columnTasks"
+      group="tasks"
+      :animation="250"
+      :disabled="readonly"
+      ghost-class="task-ghost"
+      :data-column-id="column.id"
+      draggable="[data-task-id]"
+      @start="onTaskSortStart"
+      @end="onTaskSortEnd"
+      class="flex-1 flex flex-col gap-2"
+    >
+      <TaskCard
         v-for="task in column.tasks"
         :key="task.id"
         :task="task"
-        @click="emit('selectTask', $event)"
+        :data-task-id="task.id"
+        @click="emit('selectTask', task.id)"
       />
-    </div>
-
-    <button
-      class="mt-3 flex items-center gap-[6px] h-8 px-2 text-sm font-medium text-gray-900 rounded-sm hover:bg-black/5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-      @click="emit('addTask', column.id)"
-    >
-      <svg class="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
-        <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-      </svg>
-      <span>Add task</span>
-    </button>
+    </VueDraggable>
   </div>
 </template>
+
+<style>
+.task-ghost {
+  background-color: rgba(201, 201, 201, 0.8);
+  border-radius: 0.125rem;
+}
+.task-ghost > * {
+  visibility: hidden;
+}
+</style>
