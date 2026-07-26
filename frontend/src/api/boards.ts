@@ -7,6 +7,7 @@ import type {
   BoardMember,
   AddMemberRequest,
   UpdateMemberRoleRequest,
+  UserSearchResult,
   Column,
   CreateColumnRequest,
   UpdateColumnRequest,
@@ -69,6 +70,13 @@ export const boardsApi = {
 
   restore(id: number) {
     return api.patch<Board>(`/boards/${id}/restore`);
+  },
+
+  searchUsers(boardId: number, query: string, signal?: AbortSignal) {
+    return api.get<UserSearchResult[]>(`/boards/${boardId}/members/search`, {
+      params: { q: query },
+      signal,
+    });
   },
 };
 

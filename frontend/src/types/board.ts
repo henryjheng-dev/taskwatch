@@ -97,8 +97,14 @@ export interface UpdateBoardRequest {
 }
 
 export interface AddMemberRequest {
-  email: string
+  query: string
   role?: BoardRole
+}
+
+export interface UserSearchResult {
+  id: number
+  name: string
+  email: string
 }
 
 export interface UpdateMemberRoleRequest {
