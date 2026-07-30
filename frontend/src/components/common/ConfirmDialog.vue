@@ -25,16 +25,16 @@ const emit = defineEmits<{
 
 <template>
   <BaseModal :show="show" :title="title" max-width="max-w-sm" @close="emit('cancel')">
-    <p class="text-sm text-gray-600 mb-6">{{ message }}</p>
+    <p class="text-sm text-gray-800 mb-6">{{ message }}</p>
     <div class="flex justify-end gap-3">
       <button
-        class="h-8 px-4 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-sm transition-colors"
+        class="h-8 px-4 text-sm font-medium text-gray-800 hover:text-gray-900 bg-gray-100 hover:bg-gray-300 rounded-sm transition-colors cursor-pointer"
         @click="emit('cancel')"
       >
         {{ cancelText }}
       </button>
       <button
-        class="h-8 px-4 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-sm transition-colors"
+        class="h-8 px-4 text-sm font-medium text-white bg-red-600 hover:bg-red-800 rounded-sm transition-colors cursor-pointer"
         @click="emit('confirm')"
       >
         {{ confirmText }}
