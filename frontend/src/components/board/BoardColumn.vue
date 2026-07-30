@@ -98,7 +98,7 @@ async function onTaskSortEnd(evt: DraggableEvent<Task>) {
       </span>
       <template v-if="!readonly">
         <button
-          class="ml-auto flex items-center justify-center w-6 h-6 text-gray-600 hover:text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+          class="ml-auto flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
           @click="emit('addTask', column.id)"
         >
           <Plus class="w-3.5 h-3.5" :stroke-width="1.5" />
@@ -106,7 +106,7 @@ async function onTaskSortEnd(evt: DraggableEvent<Task>) {
         <BaseDropdown>
           <template #trigger="{ toggle, isOpen }">
             <button
-              class="flex items-center justify-center w-6 h-6 text-gray-600 hover:text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+              class="flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
               :class="{ 'bg-black/5': isOpen }"
               @click="toggle"
             >
