@@ -54,7 +54,7 @@ async function handleRegister() {
     <div class="space-y-8">
       <div class="space-y-2">
         <h1 class="text-4xl font-bold tracking-tight text-gray-1000 heading-40">註冊</h1>
-        <p class="text-gray-900 copy-14">建立您的帳號，開始管理專案</p>
+        <p class="text-gray-900">建立您的帳號，開始管理專案</p>
       </div>
 
       <form class="space-y-5" @submit.prevent="handleRegister">
@@ -81,7 +81,7 @@ async function handleRegister() {
         </BaseButton>
       </form>
 
-      <p class="text-xs font-light leading-relaxed text-center text-slate-850copy-14">
+      <p class="text-xs font-light leading-relaxed text-center">
         已經有帳號了？
         <router-link to="/login" class="font-medium text-blue-700 hover:text-blue-800">
           登入
