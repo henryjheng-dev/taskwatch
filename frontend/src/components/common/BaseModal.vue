@@ -33,13 +33,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 <template>
   <Teleport to="body">
     <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/50" />
-      <div class="relative w-full rounded-xl bg-white p-6 shadow-xl" :class="maxWidth">
+      <div class="fixed inset-0 bg-black/50" @click="emit('close')" />
+      <div class="relative w-full rounded-lg bg-white p-6 shadow-xl" :class="maxWidth">
         <div v-if="title" class="mb-4 flex items-center justify-between">
           <h2 class="text-lg font-medium text-gray-900">{{ title }}</h2>
           <button
             v-if="!hideClose"
-            class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            class="rounded-lg p-1 text-gray-900 hover:bg-gray-100"
             @click="emit('close')"
           >
             <X class="h-5 w-5" />
@@ -50,4 +50,3 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     </div>
   </Teleport>
 </template>
-
