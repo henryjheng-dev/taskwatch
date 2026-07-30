@@ -62,14 +62,30 @@ async function handleGoogleLogin(credential: string) {
 </script>
 
 <template>
-  <AuthLayout>
-    <div class="space-y-8">
+  <AuthLayout :image-placeholder="false" left-panel-width="lg:w-[45%]">
+    <!-- 左側圖片區塊 (加上 relative 與適當 padding) -->
+    <template #image>
+      <div class="relative w-full h-full p-4 lg:p-6">
+        <div class="w-full h-full rounded-2xl overflow-hidden relative shadow-inner bg-gray-50">
+          <img
+            src="/loginBg.jpg"
+            alt="Login Background"
+            class="absolute inset-0 w-full h-full object-cover"
+          />
+        </div>
+      </div>
+    </template>
+
+    <!-- 右側表單區塊 (讓寬度更加大氣) -->
+    <div class="w-full max-w-md mx-auto space-y-6">
+      <!-- 標題區 -->
       <div class="space-y-2">
-        <h1 class="text-4xl font-bold tracking-tight text-gray-1000 heading-40">登入</h1>
-        <p class="text-gray-900 copy-14">歡迎回來，請輸入您的帳號密碼</p>
+        <h1 class="text-3xl font-bold tracking-tight text-gray-900">登入</h1>
+        <p class="text-gray-700 text-base">歡迎回來！快進來坐 ～</p>
       </div>
 
-      <form class="space-y-5" @submit.prevent="handleLogin">
+      <!-- 表單區 -->
+      <form class="space-y-4" @submit.prevent="handleLogin">
         <BaseInput
           v-model="email"
           type="email"
@@ -91,20 +107,23 @@ async function handleGoogleLogin(credential: string) {
         </BaseButton>
       </form>
 
-      <div class="relative">
+      <!-- 分隔線 -->
+      <div class="relative py-2">
         <div class="absolute inset-0 flex items-center">
-          <div class="w-full border-t border-black/8" />
+          <div class="w-full border-t border-gray-400" />
         </div>
-        <div class="relative flex justify-center text-xs font-light leading-relaxed">
-          <span class="px-4 bg-bg-100 text-gray-700">or</span>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="px-3 bg-white text-gray-700">or</span>
         </div>
       </div>
 
+      <!-- 第三方登入 -->
       <GoogleLoginButton @credential="handleGoogleLogin" @error="(msg) => toast.error(msg)" />
 
-      <p class="text-xs font-light leading-relaxed text-center text-slate-850copy-14">
+      <!-- 頁尾引導連結 -->
+      <p class="text-sm text-gray-700 text-center pt-2">
         還沒有帳號？
-        <router-link to="/register" class="font-medium text-blue-700 hover:text-blue-800">
+        <router-link to="/register" class="font-semibold text-gray-900 hover:underline">
           註冊
         </router-link>
       </p>
