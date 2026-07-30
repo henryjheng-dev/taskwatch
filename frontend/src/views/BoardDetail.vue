@@ -13,7 +13,9 @@ import AppHeader from '../components/common/AppHeader.vue';
 import SearchBoardDropdown from '../components/common/SearchBoardDropdown.vue';
 import BaseDropdown from '../components/common/BaseDropdown.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
-import { Ellipsis, Trash2, Archive } from '@lucide/vue';
+import MemberListModal from '../components/board/MemberListModal.vue';
+import InviteMemberModal from '../components/board/InviteMemberModal.vue';
+import { Ellipsis, Trash2, Archive, Users, UserPlus } from '@lucide/vue';
 import { VueDraggable } from 'vue-draggable-plus';
 
 const route = useRoute();
@@ -29,6 +31,8 @@ const addingColumn = ref(false);
 const selectedTaskId = ref<number | null>(null);
 const showArchiveConfirm = ref(false);
 const showDeleteBoardConfirm = ref(false);
+const showMemberList = ref(false);
+const showInviteMember = ref(false);
 
 const authStore = useAuthStore();
 
@@ -199,10 +203,25 @@ async function handleAddColumn() {
         </h1>
 
         <div class="flex items-center gap-1">
+          <button
+            class="flex items-center gap-1 px-2 h-8 text-sm text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+            @click="showMemberList = true"
+          >
+            <Users class="w-4 h-4" :stroke-width="1.5" />
+            <span>成員 {{ boardStore.board?.boardMembers?.length ?? 0 }}</span>
+          </button>
+          <button
+            v-if="!isArchived"
+            class="flex items-center gap-1 px-2 h-8 text-sm text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+            @click="showInviteMember = true"
+          >
+            <UserPlus class="w-4 h-4" :stroke-width="1.5" />
+            <span>邀請</span>
+          </button>
           <BaseDropdown v-if="!isArchived">
             <template #trigger="{ toggle, isOpen }">
               <button
-                class="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+                class="flex items-center justify-center w-8 h-8 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
                 :class="{ 'bg-black/5': isOpen }"
                 @click="toggle"
               >
@@ -300,6 +319,19 @@ async function handleAddColumn() {
         confirm-text="刪除"
         @confirm="handleDeleteBoard"
         @cancel="showDeleteBoardConfirm = false"
+      />
+      <MemberListModal
+        :show="showMemberList"
+        :board-id="boardId"
+        :owner-id="boardStore.board?.ownerId ?? 0"
+        :current-user-id="authStore.user?.id ?? 0"
+        @close="showMemberList = false"
+      />
+      <InviteMemberModal
+        :show="showInviteMember"
+        :board-id="boardId"
+        @close="showInviteMember = false"
+        @invited="showInviteMember = false; boardStore.fetchBoard(boardId)"
       />
       <TaskDetailModal
         :show="selectedTaskId !== null"
