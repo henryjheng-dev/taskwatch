@@ -104,6 +104,16 @@ export class BoardsController {
 
   // ──────────────────────────── Members ──────────────────────────────────
 
+  /** GET /boards/:id/members/search?q=keyword → 200 搜尋使用者（排除現有成員） */
+  @Get(':id/members/search')
+  searchUsers(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Query('q') query: string,
+  ) {
+    return this.boardsService.searchUsers(id, req.user.id, query ?? '');
+  }
+
   /** GET /boards/:id/members → 200 看板成員列表 */
   @Get(':id/members')
   findMembers(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {

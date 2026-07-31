@@ -175,20 +175,45 @@ export class BoardsService {
     });
   }
 
+  /** 搜尋使用者（排除已是看板成員的），用於邀請功能 */
+  async searchUsers(boardId: number, userId: number, query: string) {
+    await this.assertMember(boardId, userId);
+    const memberIds = await this.prisma.boardMember.findMany({
+      where: { boardId },
+      select: { userId: true },
+    });
+    return this.prisma.user.findMany({
+      where: {
+        AND: [
+          {
+            OR: [{ name: { contains: query } }, { email: { contains: query } }],
+          },
+          { id: { notIn: memberIds.map((m) => m.userId) } },
+        ],
+      },
+      select: { id: true, name: true, email: true },
+      take: 10,
+    });
+  }
+
   /**
    * 新增成員，只有 ADMIN 可執行。
-   * 以 email 查找使用者，使 API 不暴露 userId（防止 IDOR）。
-   * 若 email 不存在拋 404（不提示「此 email 未註冊」，防止 User Enumeration）。
+   * 先用 query 比對 name，找不到再比對 email。
+   * 若都找不到拋 404（不提示哪個欄位不存在，防止 User Enumeration）。
    */
   async addMember(boardId: number, requesterId: number, dto: AddMemberDto) {
     await this.assertAdmin(boardId, requesterId);
     await this.assertNotArchived(boardId);
 
-    const targetUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    let targetUser = await this.prisma.user.findFirst({
+      where: { name: dto.query },
     });
-    // 統一拋 404，不區分「email 不存在」或「已是成員」，避免洩漏使用者資訊
-    if (!targetUser) throw new NotFoundException('找不到此 Email 對應的使用者');
+    if (!targetUser) {
+      targetUser = await this.prisma.user.findFirst({
+        where: { email: dto.query },
+      });
+    }
+    if (!targetUser) throw new NotFoundException('找不到此使用者');
 
     // upsert：若已是成員只更新 role，避免 unique constraint 衝突
     return this.prisma.boardMember.upsert({
