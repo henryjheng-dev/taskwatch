@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LoaderCircle } from '@lucide/vue';
 withDefaults(
   defineProps<{
     variant?: 'primary' | 'secondary' | 'tertiary' | 'error';
@@ -25,9 +26,9 @@ const emit = defineEmits<{
   <button
     :type="type"
     :disabled="disabled || loading"
-    class="relative inline-flex items-center justify-center font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-700"
+    class="relative inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-700"
     :class="[
-      variant === 'primary' && 'bg-gray-1000 text-white hover:bg-gray-900 active:bg-gray-800',
+      variant === 'primary' && 'bg-gray-1000 text-white',
       variant === 'secondary' &&
         'bg-white text-gray-1000 border border-gray-alpha-400 hover:border-gray-500 active:border-gray-600',
       variant === 'tertiary' &&
@@ -40,14 +41,7 @@ const emit = defineEmits<{
     :style="variant === 'secondary' ? { borderColor: 'rgba(0,0,0,0.08)' } : {}"
     @click="emit('click', $event)"
   >
-    <svg v-if="loading" class="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-      <path
-        class="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
+    <LoaderCircle v-if="loading" class="mr-2 h-4 w-4 animate-spin" />
     <slot />
   </button>
 </template>

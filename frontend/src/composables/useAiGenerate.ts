@@ -10,7 +10,7 @@ export function useAiGenerate() {
   async function fetchUsage() {
     try {
       const res = await aiApi.getUsage()
-      usage.value = res.data.data
+      usage.value = res.data
     } catch {
       usage.value = null
     }
@@ -21,7 +21,7 @@ export function useAiGenerate() {
     error.value = ''
     try {
       const res = await aiApi.generate({ prompt })
-      return res.data.data
+      return res.data
     } catch (err: any) {
       const msg = err.response?.data?.message
       if (err.response?.status === 429) {

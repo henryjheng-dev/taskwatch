@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -48,6 +49,24 @@ export class BoardsController {
     return this.boardsService.findAll(req.user.id);
   }
 
+  /** GET /boards/archived → 200 已封存的看板 */
+  @Get('archived')
+  findArchived(@Req() req: AuthRequest) {
+    return this.boardsService.findArchived(req.user.id);
+  }
+
+  /** GET /boards/recent → 200 最近開啟的看板（前 3 筆） */
+  @Get('recent')
+  findRecent(@Req() req: AuthRequest) {
+    return this.boardsService.findRecent(req.user.id);
+  }
+
+  /** GET /boards/search?q=keyword → 200 搜尋看板 */
+  @Get('search')
+  search(@Req() req: AuthRequest, @Query('q') query: string) {
+    return this.boardsService.search(req.user.id, query ?? '');
+  }
+
   /** GET /boards/:id → 200 看板詳情（含欄位＋任務） */
   @Get(':id')
   findOne(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
@@ -71,7 +90,29 @@ export class BoardsController {
     return this.boardsService.remove(id, req.user.id);
   }
 
+  /** PATCH /boards/:id/archive → 200 封存看板（ADMIN only） */
+  @Patch(':id/archive')
+  archive(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.boardsService.archive(id, req.user.id);
+  }
+
+  /** PATCH /boards/:id/restore → 200 恢復看板（ADMIN only） */
+  @Patch(':id/restore')
+  restore(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.boardsService.restore(id, req.user.id);
+  }
+
   // ──────────────────────────── Members ──────────────────────────────────
+
+  /** GET /boards/:id/members/search?q=keyword → 200 搜尋使用者（排除現有成員） */
+  @Get(':id/members/search')
+  searchUsers(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Query('q') query: string,
+  ) {
+    return this.boardsService.searchUsers(id, req.user.id, query ?? '');
+  }
 
   /** GET /boards/:id/members → 200 看板成員列表 */
   @Get(':id/members')

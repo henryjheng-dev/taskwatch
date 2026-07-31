@@ -14,6 +14,7 @@ export class LabelsService {
   /** 建立標籤，需要 ADMIN 權限（標籤是看板層級的配置）。 */
   async create(boardId: number, userId: number, dto: CreateLabelDto) {
     await this.boardsService.assertAdmin(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
     return this.prisma.label.create({
       data: { boardId, name: dto.name, color: dto.color },
     });
@@ -36,6 +37,7 @@ export class LabelsService {
     dto: UpdateLabelDto,
   ) {
     await this.boardsService.assertAdmin(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
     await this.assertLabelBelongsToBoard(labelId, boardId);
 
     return this.prisma.label.update({
@@ -51,6 +53,7 @@ export class LabelsService {
    */
   async remove(boardId: number, labelId: number, userId: number) {
     await this.boardsService.assertAdmin(boardId, userId);
+    await this.boardsService.assertNotArchived(boardId);
     await this.assertLabelBelongsToBoard(labelId, boardId);
 
     await this.prisma.label.delete({ where: { id: labelId } });

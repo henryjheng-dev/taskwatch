@@ -55,6 +55,7 @@ export interface Board {
   name: string
   backgroundColor: string
   ownerId: number
+  archivedAt: string | null
   createdAt: string
   updatedAt: string
   columns: Column[]
@@ -67,6 +68,7 @@ export interface BoardListItem {
   name: string
   backgroundColor: string
   ownerId: number
+  archivedAt: string | null
   createdAt: string
   updatedAt: string
   _count: {
@@ -95,12 +97,24 @@ export interface UpdateBoardRequest {
 }
 
 export interface AddMemberRequest {
-  email: string
+  query: string
   role?: BoardRole
+}
+
+export interface UserSearchResult {
+  id: number
+  name: string
+  email: string
 }
 
 export interface UpdateMemberRoleRequest {
   role: BoardRole
+}
+
+export interface BoardSearchResult {
+  id: number
+  name: string
+  updatedAt: string
 }
 
 export interface CreateColumnRequest {

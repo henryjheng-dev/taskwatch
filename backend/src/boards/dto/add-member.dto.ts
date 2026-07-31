@@ -1,14 +1,14 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { BoardRole } from '@/generated/prisma/client';
 
 export class AddMemberDto {
   /**
-   * 用 Email 邀請而非 userId，
-   * 前端不需要知道對方的 DB 主鍵，符合 API 資安最佳實踐。
+   * 可用名稱或 Email 邀請，
+   * Service 會先比對 name，再比對 email。
    */
-  @IsEmail({}, { message: '請輸入有效的 Email 地址' })
-  @IsNotEmpty({ message: 'Email 不能為空' })
-  email!: string;
+  @IsString()
+  @IsNotEmpty({ message: '請輸入名稱或 Email' })
+  query!: string;
 
   /**
    * 未填時 Service 預設指派 MEMBER 角色。

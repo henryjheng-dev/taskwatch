@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoardStore } from '../stores/board';
+import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
+import { boardsApi } from '../api';
+import InlineEdit from '../components/common/InlineEdit.vue';
 import BoardColumn from '../components/board/BoardColumn.vue';
-import TaskCreateForm from '../components/board/TaskCreateForm.vue';
-import TaskDetailModal from '../components/board/TaskDetailModal.vue';
-import UserMenu from '../components/common/UserMenu.vue';
-import { useDragAndDrop } from '../composables/useDragAndDrop';
+import TaskCreateForm from '../components/task/TaskCreateForm.vue';
+import TaskDetailModal from '../components/task/TaskDetailModal.vue';
+import AppHeader from '../components/common/AppHeader.vue';
+import SearchBoardDropdown from '../components/common/SearchBoardDropdown.vue';
+import BaseDropdown from '../components/common/BaseDropdown.vue';
+import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import MemberListModal from '../components/board/MemberListModal.vue';
+import InviteMemberModal from '../components/board/InviteMemberModal.vue';
+import { Ellipsis, Trash2, Archive, Users, UserPlus } from '@lucide/vue';
+import { VueDraggable } from 'vue-draggable-plus';
 
 const route = useRoute();
 const router = useRouter();
@@ -20,6 +29,22 @@ const creatingColumnId = ref(0);
 const newColumnName = ref('');
 const addingColumn = ref(false);
 const selectedTaskId = ref<number | null>(null);
+const showArchiveConfirm = ref(false);
+const showDeleteBoardConfirm = ref(false);
+const showMemberList = ref(false);
+const showInviteMember = ref(false);
+
+const authStore = useAuthStore();
+
+const isOwner = computed(() => boardStore.board?.ownerId === authStore.user?.id);
+const isArchived = computed(() => !!boardStore.board?.archivedAt);
+
+const columns = computed({
+  get: () => boardStore.board?.columns ?? [],
+  set: (val) => {
+    if (boardStore.board) boardStore.board.columns = val;
+  },
+});
 
 const selectedTask = computed(() => {
   if (selectedTaskId.value === null) return null;
@@ -39,10 +64,22 @@ function handleCloseTaskDetail() {
 }
 
 onMounted(async () => {
-  // 清空上一張看板的殘留資料，避免畫面閃爍
+  // 初次進入看板時，清空殘留資料並載入看板
   boardStore.$reset();
   try {
     await boardStore.fetchBoard(boardId.value);
+  } catch {
+    router.push('/boards');
+  }
+});
+
+// 監聽路由 id 變化，處理「從一個看板切換到另一個看板」的情況
+// Vue 會複用同一個元件（/boards/:id），onMounted 不會再次執行
+// 所以需要用 watch 在 id 改變時重新 fetch
+watch(boardId, async (newId) => {
+  boardStore.$reset();
+  try {
+    await boardStore.fetchBoard(newId);
   } catch {
     router.push('/boards');
   }
@@ -53,15 +90,55 @@ onUnmounted(() => {
   boardStore.$reset();
 });
 
-const { onDrop } = useDragAndDrop();
-
 function handleAddTask(columnId: number) {
   creatingColumnId.value = columnId;
   showCreateModal.value = true;
 }
 
-function handleDropTask(taskId: number, targetColumnId: number, position: number) {
-  onDrop(taskId, { targetColumnId, position });
+async function handleArchive() {
+  showArchiveConfirm.value = false;
+  try {
+    await boardStore.archiveBoard(boardId.value);
+  } catch {
+    toast.error('封存看板失敗');
+  }
+}
+
+async function handleDeleteBoard() {
+  showDeleteBoardConfirm.value = false;
+  try {
+    await boardsApi.delete(boardId.value);
+    router.push('/boards');
+  } catch {
+    toast.error('刪除看板失敗');
+  }
+}
+
+async function onColumnSortEnd() {
+  const ids = boardStore.board!.columns.map((c) => c.id);
+  try {
+    await boardStore.reorderColumns(boardId.value, ids);
+  } catch {
+    await boardStore.fetchBoard(boardId.value);
+    toast.error('重新排序欄位失敗');
+  }
+}
+
+async function handleUpdateBoardName(name: string) {
+  try {
+    await boardsApi.update(boardId.value, { name });
+    boardStore.updateBoardLocally(name);
+  } catch {
+    toast.error('更新看板名稱失敗');
+  }
+}
+
+async function handleDeleteColumn(columnId: number) {
+  try {
+    await boardStore.deleteColumn(boardId.value, columnId);
+  } catch {
+    toast.error('刪除欄位失敗');
+  }
 }
 
 async function handleAddColumn() {
@@ -83,136 +160,200 @@ async function handleAddColumn() {
   <div class="min-h-screen bg-bg-200 flex flex-col">
     <!-- 載入中 → 顯示骨架 -->
     <div v-if="boardStore.loading" class="animate-pulse px-6">
-        <div class="h-14" />
-        <div class="h-16 flex items-center">
-          <div class="h-8 w-48 bg-black/5 rounded-sm" />
-        </div>
-        <div class="flex gap-6 pt-3 overflow-x-auto">
-          <div v-for="i in 3" :key="i" class="w-74 shrink-0">
-            <div class="h-6 w-24 bg-black/5 rounded-sm mb-4" />
-            <div class="space-y-3">
-              <div v-for="j in 4" :key="j" class="h-24 bg-black/5 rounded-lg" />
-            </div>
+      <div class="h-14" />
+      <div class="h-16 flex items-center">
+        <div class="h-8 w-48 bg-black/5 rounded-sm" />
+      </div>
+      <div class="flex gap-6 pt-3 overflow-x-auto">
+        <div v-for="i in 3" :key="i" class="w-74 shrink-0">
+          <div class="h-6 w-24 bg-black/5 rounded-sm mb-4" />
+          <div class="space-y-3">
+            <div v-for="j in 4" :key="j" class="h-24 bg-black/5 rounded-lg" />
           </div>
         </div>
       </div>
-      <!-- 載入完成 → 顯示看板內容 -->
-      <div v-else-if="boardStore.board" class="flex flex-col flex-1">
-        <!-- Top Navigation Bar -->
-        <header
-      class="h-14 bg-white border-b border-black/8 flex items-center justify-between px-6 shrink-0"
-    >
-      <div class="flex items-center gap-2">
-        <button
-          class="w-8 h-8 flex items-center justify-center rounded-sm text-gray-900 hover:bg-black/5 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-            <path
-              d="M3 5h14M3 10h14M3 15h14"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              fill="none"
-            />
-          </svg>
-        </button>
-
-        <nav class="flex items-center gap-2 text-sm font-medium leading-5">
-          <svg class="w-4 h-4 text-gray-700" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M2 3.5A1.5 1.5 0 013.5 2h3.88a1.5 1.5 0 011.06.44l3.12 3.12a1.5 1.5 0 01.44 1.06V12.5a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 012 12.5v-9z"
-              stroke="currentColor"
-              stroke-width="1.2"
-              fill="none"
-            />
-          </svg>
-          <span class="text-gray-900">My new project</span>
-        </nav>
-
-        <span
-          class="inline-flex items-center px-2 py-0.5 text-[13px] font-light leading-relaxed text-white bg-gray-1000 rounded-full"
-        >
-          Board
-        </span>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button
-          class="w-8 h-8 flex items-center justify-center rounded-sm text-gray-900 hover:bg-black/5 transition-colors focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="none">
-            <circle cx="9" cy="9" r="4.5" stroke="currentColor" stroke-width="1.5" />
-            <path
-              d="M12.5 12.5L17 17"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-
-        <UserMenu />
-      </div>
-    </header>
-
-    <!-- Page Title & Toolbar -->
-    <div class="flex items-center justify-between px-6 h-16 shrink-0">
-      <h1
-        class="text-2xl font-bold tracking-tight text-gray-1000 leading-8"
-        style="letter-spacing: -0.96px"
-      >
-        {{ boardStore.board?.name || 'New Document' }}
-      </h1>
     </div>
+    <!-- 載入完成 → 顯示看板內容 -->
+    <div v-else-if="boardStore.board" class="flex flex-col flex-1">
+      <AppHeader>
+        <SearchBoardDropdown />
+      </AppHeader>
 
-    <!-- Board Columns -->
-    <main class="flex-1 flex gap-6 px-6 pt-3 pb-6 overflow-x-auto">
-      <BoardColumn
-        v-for="col in boardStore.board?.columns"
-        :key="col.id"
-        :column="col"
-        :board-id="boardId"
-        @add-task="handleAddTask"
-        @select-task="handleSelectTask"
-        @drop-task="handleDropTask"
-      />
-
-      <div class="shrink-0 w-55 xl:w-57.5">
-        <div class="flex items-center gap-2">
-          <input
-            v-model="newColumnName"
-            placeholder="+ Add column"
-            class="w-full h-8 px-2 bg-transparent text-sm text-gray-900 rounded-sm border border-dashed border-black/8 placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-200"
-            @keydown.enter="handleAddColumn"
-            @keydown.escape="newColumnName = ''"
-          />
-          <button
-            v-if="newColumnName.trim()"
-            :disabled="addingColumn"
-            class="shrink-0 h-8 px-2 text-sm font-medium text-white bg-gray-1000 rounded-sm hover:bg-gray-900 disabled:opacity-50 transition-colors"
-            @click="handleAddColumn"
+      <!-- Page Title & Toolbar -->
+      <div class="flex items-center justify-between px-6 h-16 shrink-0">
+        <InlineEdit
+          v-if="!isArchived"
+          :model-value="boardStore.board?.name || ''"
+          edit-class="text-2xl font-bold tracking-tight h-10 px-2 bg-white border border-gray-300 rounded outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent box-border"
+          @update:model-value="handleUpdateBoardName"
+        >
+          <h1
+            class="text-2xl font-bold tracking-tight text-gray-1000 leading-8"
+            style="letter-spacing: -0.96px"
           >
-            Add
+            {{ boardStore.board?.name || 'New Document' }}
+          </h1>
+        </InlineEdit>
+        <h1
+          v-else
+          class="text-2xl font-bold tracking-tight text-gray-1000 leading-8"
+          style="letter-spacing: -0.96px"
+        >
+          {{ boardStore.board?.name || 'New Document' }}
+        </h1>
+
+        <div class="flex items-center gap-1">
+          <button
+            class="flex items-center gap-1 px-2 h-8 text-sm text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+            @click="showMemberList = true"
+          >
+            <Users class="w-4 h-4" :stroke-width="1.5" />
+            <span>成員 {{ boardStore.board?.boardMembers?.length ?? 0 }}</span>
           </button>
+          <button
+            v-if="!isArchived"
+            class="flex items-center gap-1 px-2 h-8 text-sm text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+            @click="showInviteMember = true"
+          >
+            <UserPlus class="w-4 h-4" :stroke-width="1.5" />
+            <span>邀請</span>
+          </button>
+          <BaseDropdown v-if="!isArchived">
+            <template #trigger="{ toggle, isOpen }">
+              <button
+                class="flex items-center justify-center w-8 h-8 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+                :class="{ 'bg-black/5': isOpen }"
+                @click="toggle"
+              >
+                <Ellipsis class="w-4 h-4" :stroke-width="1.5" />
+              </button>
+            </template>
+            <template #dropdown="{ close }">
+              <button
+                class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
+                @click="close(); showArchiveConfirm = true"
+              >
+                <Archive class="w-4 h-4" :stroke-width="1.5" />
+                封存
+              </button>
+              <button
+                v-if="isOwner"
+                class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
+                @click="close(); showDeleteBoardConfirm = true"
+              >
+                <Trash2 class="w-4 h-4" :stroke-width="1.5" />
+                刪除
+              </button>
+            </template>
+          </BaseDropdown>
         </div>
       </div>
-    </main>
 
-    <TaskCreateForm
-      :show="showCreateModal"
-      :board-id="boardId"
-      :column-id="creatingColumnId"
-      @close="showCreateModal = false"
-      @created="showCreateModal = false"
-    />
+      <!-- Board Columns -->
+      <main class="flex-1 flex px-6 pt-3 pb-6 overflow-x-auto">
+        <VueDraggable
+          v-model="columns"
+          group="columns"
+          :animation="250"
+          :disabled="isArchived"
+          handle=".column-header"
+          direction="horizontal"
+          ghost-class="column-ghost"
+          class="flex gap-6"
+          @end="onColumnSortEnd"
+        >
+          <BoardColumn
+            v-for="col in columns"
+            :key="col.id"
+            :column="col"
+            :board-id="boardId"
+            :readonly="isArchived"
+            @add-task="handleAddTask"
+            @select-task="handleSelectTask"
+            @update-column="(id, name) => !isArchived && boardStore.updateColumn(boardId, id, name)"
+            @delete-column="handleDeleteColumn"
+          />
+        </VueDraggable>
 
-    <TaskDetailModal
-      :show="selectedTaskId !== null"
-      :task="selectedTask"
-      @close="handleCloseTaskDetail"
-      @updated="handleCloseTaskDetail"
-      @deleted="handleCloseTaskDetail"
-    />
+        <div v-if="!isArchived" class="shrink-0 w-55 xl:w-57.5 ml-6">
+          <div class="flex items-center gap-2">
+            <input
+              v-model="newColumnName"
+              placeholder="+ Add column"
+              class="w-full h-8 px-2 bg-transparent text-sm text-gray-900 rounded-sm border border-dashed border-black/8 placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-200"
+              @keydown.enter="handleAddColumn"
+              @keydown.escape="newColumnName = ''"
+            />
+            <button
+              v-if="newColumnName.trim()"
+              :disabled="addingColumn"
+              class="shrink-0 h-8 px-2 text-sm font-medium text-white bg-gray-1000 rounded-sm hover:bg-gray-900 disabled:opacity-50 transition-colors"
+              @click="handleAddColumn"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <TaskCreateForm
+        :show="showCreateModal"
+        :board-id="boardId"
+        :column-id="creatingColumnId"
+        @close="showCreateModal = false"
+        @created="showCreateModal = false"
+      />
+
+      <ConfirmDialog
+        :show="showArchiveConfirm"
+        title="封存看板"
+        message="確定要封存此看板嗎？封存後看板僅供檢視。"
+        confirm-text="封存"
+        @confirm="handleArchive"
+        @cancel="showArchiveConfirm = false"
+      />
+      <ConfirmDialog
+        :show="showDeleteBoardConfirm"
+        title="刪除看板"
+        message="確定要永久刪除此看板嗎？此操作無法復原。"
+        confirm-text="刪除"
+        @confirm="handleDeleteBoard"
+        @cancel="showDeleteBoardConfirm = false"
+      />
+      <MemberListModal
+        :show="showMemberList"
+        :board-id="boardId"
+        :owner-id="boardStore.board?.ownerId ?? 0"
+        :current-user-id="authStore.user?.id ?? 0"
+        @close="showMemberList = false"
+      />
+      <InviteMemberModal
+        :show="showInviteMember"
+        :board-id="boardId"
+        @close="showInviteMember = false"
+        @invited="showInviteMember = false; boardStore.fetchBoard(boardId)"
+      />
+      <TaskDetailModal
+        :show="selectedTaskId !== null"
+        :task="selectedTask"
+        :readonly="isArchived"
+        @close="handleCloseTaskDetail"
+        @updated="handleCloseTaskDetail"
+        @deleted="handleCloseTaskDetail"
+      />
     </div>
   </div>
 </template>
+
+<style scoped>
+</style>
+
+<style>
+.column-ghost {
+  background: rgba(201, 201, 201, 0.8) !important;
+  border-radius: 0.125rem;
+}
+.column-ghost > * {
+  visibility: hidden !important;
+}
+</style>
