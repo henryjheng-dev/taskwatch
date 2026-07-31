@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted } from 'vue';
 
 /**
  * 共用搜尋邏輯 composable
@@ -14,81 +14,82 @@ import { ref, watch, onUnmounted } from 'vue'
  *     { debounceMs: 300 },
  *   )
  */
+
 export function useSearch<T>(
   fetchFn: (query: string, signal: AbortSignal) => Promise<T[]>,
   options?: { debounceMs?: number },
 ) {
-  const debounceMs = options?.debounceMs ?? 200
+  const debounceMs = options?.debounceMs ?? 200;
 
-  const query = ref('')
-  const results = ref<T[]>([])
-  const loading = ref(false)
+  const query = ref('');
+  const results = ref<T[]>([]);
+  const loading = ref(false);
 
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  let abortController: AbortController | null = null
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let abortController: AbortController | null = null;
 
   // ─── 取消所有進行中的操作 ──────────────────────────────────────
   function cancel() {
     if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
     }
     if (abortController) {
-      abortController.abort()
-      abortController = null
+      abortController.abort();
+      abortController = null;
     }
   }
 
   // ─── 真正發送 API ────────────────────────────────────────────
   async function execute(val: string) {
-    if (!val.trim()) return
-    loading.value = true
-    abortController = new AbortController()
+    if (!val.trim()) return;
+    loading.value = true;
+    abortController = new AbortController();
     try {
-      const res = await fetchFn(val.trim(), abortController.signal)
-      results.value = res
+      const res = await fetchFn(val.trim(), abortController.signal);
+      results.value = res;
     } catch (e: any) {
-      if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return
-      results.value = []
+      if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return;
+      results.value = [];
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   // ─── v-model / watch 自動搜尋（含 debounce）────────────────────
   watch(query, (val) => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    if (abortController) abortController.abort()
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (abortController) abortController.abort();
 
     if (!val.trim()) {
-      results.value = []
-      loading.value = false
-      return
+      results.value = [];
+      loading.value = false;
+      return;
     }
 
-    debounceTimer = setTimeout(() => execute(val), debounceMs)
-  })
+    debounceTimer = setTimeout(() => execute(val), debounceMs);
+  });
 
   // ─── 手動觸發搜尋（跳過 debounce，例如 compositionend）─────────
   function search(val: string) {
-    cancel()
+    cancel();
     if (!val.trim()) {
-      results.value = []
-      loading.value = false
-      return
+      results.value = [];
+      loading.value = false;
+      return;
     }
-    execute(val)
+    execute(val);
   }
 
   // ─── 清除狀態 ─────────────────────────────────────────────────
   function reset() {
-    cancel()
-    query.value = ''
-    results.value = []
-    loading.value = false
+    cancel();
+    query.value = '';
+    results.value = [];
+    loading.value = false;
   }
 
-  onUnmounted(cancel)
+  onUnmounted(cancel);
 
-  return { query, results, loading, search, reset }
+  return { query, results, loading, search, reset };
 }
