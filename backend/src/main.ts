@@ -12,26 +12,31 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ── 安全性 ────────────────────────────────────────────────────────
+  // ── Security ────────────────────────────────────────────────────────
   app.use(helmet());
-  app.use(cookieParser()); // Refresh Token HttpOnly Cookie 解析
-  app.use(compression()); // gzip 壓縮回應
+  app.use(cookieParser());
+  app.use(compression());
 
   // ── CORS ──────────────────────────────────────────────────────────
-  // CORS_ORIGIN 從 .env 讀取，production 只允許 GitHub Pages
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
-    credentials: true, // 允許 Cookie 跨域傳送
+    // 允許前端在跨域請求時攜帶 Cookie 與 Authorization Headers
+    credentials: true,
   });
 
   // ── Validation ────────────────────────────────────────────────────
+  // ValidationPipe：對所有傳入 Controller 的 DTO 進行型別檢查與過濾
   app.useGlobalPipes(
     new ValidationPipe({
+      // 只保留帶有 class-validator 裝飾器的屬性，其餘視為未知欄位
       whitelist: true,
+      // 搭配 whitelist：遇到未知欄位時直接回 400
       forbidNonWhitelisted: true,
+      // 將請求中的 plain object 轉成 DTO 類別實例，讓類別方法與裝飾器行為生效
       transform: true,
       transformOptions: {
-        enableImplicitConversion: true, // 讓 @Query() number 自動轉型
+        // 依 DTO 型別轉換 query/param 的字串
+        enableImplicitConversion: true,
       },
     }),
   );
@@ -39,19 +44,21 @@ async function bootstrap() {
   // ── 全域 Filter / Interceptors ────────────────────────────────────
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(
+    // 統一包裝成功回應的資料格式
     new TransformInterceptor(),
+    // 記錄請求資訊與處理耗時
     new LoggingInterceptor(),
   );
 
   // ── Swagger ────────────────────────────────────────────────────────
   const swaggerConfig = new DocumentBuilder()
     .setTitle('TaskWatch API')
-    .setDescription('KanbanFlow 任務管理系統 REST API 文件')
+    .setDescription('TaskWatch 專案管理系統 REST API 文件')
     .setVersion('1.0')
-    .addBearerAuth() // 在 Swagger UI 中可以貼 JWT 測試
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document); // 訪問 /api/docs 查看文件
+  SwaggerModule.setup('api/docs', app, document);
 
   await app.listen(process.env.PORT ?? 3000);
 }
