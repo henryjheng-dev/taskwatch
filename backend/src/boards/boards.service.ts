@@ -43,7 +43,7 @@ export class BoardsService {
    * 透過 board_members 關聯查詢，而非直接看 ownerId，
    * 使 owner 與一般 member 的查詢路徑保持一致。
    */
-  findAll(userId: number): Promise<any> {
+  async findAll(userId: number) {
     return this.prisma.board.findMany({
       where: {
         boardMembers: { some: { userId } },
@@ -64,7 +64,7 @@ export class BoardsService {
   }
 
   /** 列出我有加入的「已封存」看板 */
-  findArchived(userId: number): Promise<any> {
+  async findArchived(userId: number) {
     return this.prisma.board.findMany({
       where: {
         boardMembers: { some: { userId } },

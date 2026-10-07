@@ -20,32 +20,36 @@ import Joi from 'joi';
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
-        // ── 應用程式 ──────────────────────────────────────────────
+        // ── Application ──────────────────────────────────────────────
         NODE_ENV: Joi.string()
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().port().default(3000),
+        // 強制檢查 CORS 來源，避免跨域請求遭任意網站存取
         CORS_ORIGIN: Joi.string().uri().required(),
 
-        // ── 資料庫 ────────────────────────────────────────────────
+        // ── Database ────────────────────────────────────────────────
         DATABASE_URL: Joi.string().uri().required(),
         DB_HOST: Joi.string().required(),
+        // TCP port 為 16-bit，範圍 1~65535
         DB_PORT: Joi.number().integer().min(1).max(65535).required(),
         DB_USER: Joi.string().required(),
         DB_PASSWORD: Joi.string().required(),
         DB_NAME: Joi.string().required(),
 
         // ── JWT ───────────────────────────────────────────────────
-        // min(32) = 256-bit 最低安全長度，符合 OWASP JWT Cheat Sheet
+        // 亂碼：最少 32 字元 (256-bit等級的演算法)，防止暴力破解
         JWT_SECRET: Joi.string().min(32).required(),
         JWT_EXPIRES_IN: Joi.string().required(),
         JWT_REFRESH_EXPIRES_IN: Joi.string().required(),
 
         // ── Google OAuth ──────────────────────────────────────────
+        // 身份識別碼，給 Google 確認請求是來自哪個網站
         GOOGLE_CLIENT_ID: Joi.string().required(),
 
         // ── Gemini AI ────────────────────────────────────────────
         GEMINI_API_KEY: Joi.string().required(),
+        // Gemini API 限額 : 一個帳號先暫定每日 5 次
         AI_DAILY_LIMIT: Joi.number().integer().min(1).default(5),
 
         // ── Redis ─────────────────────────────────────────────────
@@ -53,14 +57,13 @@ import Joi from 'joi';
         REDIS_PORT: Joi.number().port().default(6379),
 
         // ── Rate Limiting ─────────────────────────────────────────
-        // THROTTLE_TTL 單位為秒（seconds），程式內轉換為 ms
         THROTTLE_TTL: Joi.number().integer().min(1).default(60),
         THROTTLE_LIMIT: Joi.number().integer().min(1).default(100),
       }),
       validationOptions: {
-        // 允許 OS 層級的其他環境變數（PATH、HOME 等）通過驗證
+        // 直接允許作業系統自帶的其他未知環境變數
         allowUnknown: true,
-        // abortEarly: false → 一次性列出所有缺失的變數，方便除錯
+        // 一次列出所有缺失，方便除錯
         abortEarly: false,
       },
     }),
@@ -71,7 +74,7 @@ import Joi from 'joi';
       useFactory: (configService: ConfigService) => ({
         throttlers: [
           {
-            // THROTTLE_TTL 從 .env 讀取（秒） × 1000 = 毫秒
+            // THROTTLE_TTL 從 .env 讀取（秒） × 1000 = 毫秒 (套件用的單位)
             ttl: configService.getOrThrow<number>('THROTTLE_TTL') * 1000,
             limit: configService.getOrThrow<number>('THROTTLE_LIMIT'),
           },
@@ -91,7 +94,7 @@ import Joi from 'joi';
     AppService,
     {
       provide: APP_GUARD,
-      useClass: CustomThrottlerGuard, // 自訂錯誤訊息（中文）
+      useClass: CustomThrottlerGuard,
     },
   ],
 })

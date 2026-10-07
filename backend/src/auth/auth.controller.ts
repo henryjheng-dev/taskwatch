@@ -24,19 +24,20 @@ import { CurrentUser } from './decorators/current-user.decorator';
 const LOGIN_THROTTLE_TTL = 15 * 60 * 1000;
 const LOGIN_THROTTLE_LIMIT = 10;
 
-/**
- * Refresh token 存放在 httpOnly Cookie，名稱一致避免手誤。
- * httpOnly = 前端 JS 無法讀取，防 XSS 竊取。
- */
 const REFRESH_COOKIE = 'refresh_token';
 
-/** Cookie 設定集中管理，方便日後調整 */
+/** Cookie 設定 */
 const cookieOptions = (secureProd: boolean) => ({
+  // 防範 XSS 攻擊：禁止前端 JS 存取，防止惡意腳本偷取 Token
   httpOnly: true,
+  // 防範 CSRF 攻擊：限制僅同源請求可帶入 Cookie，避免釣魚網站偽造請求
   sameSite: 'strict' as const,
+  // 防禦中間人竊聽：生產環境強制僅允許 HTTPS 加密傳輸
   secure: secureProd,
+  // 作用域限制：設定為 '/' 代表全站所有 API 路徑發送請求時皆會自動附帶此 Cookie
   path: '/',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 天，與 JWT_REFRESH_EXPIRES_IN 一致
+  // 生命週期設定：單位毫秒 (ms)，設定 7 天後自動失效並被瀏覽器清除
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 });
 
 @Controller('auth')
@@ -56,7 +57,6 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Body() dto: RegisterDto,
-    // passthrough: true 讓 NestJS 不自動送出 response，方便我們在同一個 endpoint 設定 Cookie 後再送出 response。
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken, user } =
@@ -127,7 +127,6 @@ export class AuthController {
   }
 
   // 新增 @Post('google')
-
   @Post('google')
   @HttpCode(HttpStatus.OK)
   async googleLogin(

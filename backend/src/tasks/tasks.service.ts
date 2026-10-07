@@ -111,10 +111,7 @@ export class TasksService {
   async remove(taskId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    const member = await this.boardsService.assertMember(
-      boardId,
-      userId,
-    );
+    const member = await this.boardsService.assertMember(boardId, userId);
     await this.boardsService.assertNotArchived(boardId);
 
     const isAdmin = member.role === 'ADMIN';
@@ -180,10 +177,7 @@ export class TasksService {
   ) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    const member = await this.boardsService.assertMember(
-      boardId,
-      requesterId,
-    );
+    const member = await this.boardsService.assertMember(boardId, requesterId);
     await this.boardsService.assertNotArchived(boardId);
 
     const isAdmin = member.role === 'ADMIN';

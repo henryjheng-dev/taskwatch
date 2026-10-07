@@ -64,7 +64,7 @@ model Board{
 
   owner User @relation(fields: [ownerId],references: [id],onDelete: Cascade)
   columns Column[]
-  boardMembers BoardMember[]
+  boardMembers BoardMember[]  
   labels Label[]
 
   @@index([ownerId])
@@ -113,7 +113,7 @@ model Task {
   id          Int       @id @default(autoincrement())
   columnId    Int       @map("column_id")
   title       String    @db.VarChar(255)
-  description String?   @db.Text          // Markdown 格式儲存
+  description String?   @db.Text  
   linkUrl     String?   @map("link_url") @db.VarChar(2048)
   priority    Priority  @default(MEDIUM)
   dueDate     DateTime? @map("due_date") @db.Date

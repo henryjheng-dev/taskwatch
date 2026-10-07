@@ -24,7 +24,7 @@ let failedQueue: Array<{
 }> = [];
 
 /**
- * @description 批次處理並解凍所有在佇列中等待的 API 請求。
+ * @description 批次處理目前在佇列中等待的 API 請求。
  * 根據傳入的 error 決定要全數放行 (resolve) 或是全數拒絕 (reject)，處理完畢後會自動清空佇列。
  */
 function processQueue(error: unknown) {
