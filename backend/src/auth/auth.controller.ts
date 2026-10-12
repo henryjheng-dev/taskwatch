@@ -24,15 +24,21 @@ import { CurrentUser } from './decorators/current-user.decorator';
 const LOGIN_THROTTLE_TTL = 15 * 60 * 1000;
 const LOGIN_THROTTLE_LIMIT = 10;
 
+// 註冊端點速率限制：10 次 / 1 小時（防帳號洪水，比登入寬鬆——正常人短期只註冊 1~2 帳）
+const REGISTER_THROTTLE_TTL = 60 * 60 * 1000;
+const REGISTER_THROTTLE_LIMIT = 10;
+
 const REFRESH_COOKIE = 'refresh_token';
 
 /** Cookie 設定 */
 const cookieOptions = (secureProd: boolean) => ({
   // 防範 XSS 攻擊：禁止前端 JS 存取，防止惡意腳本偷取 Token
   httpOnly: true,
-  // 防範 CSRF 攻擊：限制僅同源請求可帶入 Cookie，避免釣魚網站偽造請求
-  sameSite: 'strict' as const,
-  // 防禦中間人竊聽：生產環境強制僅允許 HTTPS 加密傳輸
+  // 部署架構考量（前端 Vite 靜態 + 後端 Railway/AWS 為不同 site）：
+  // 生產環境跨站 XHR 必須 SameSite=None + Secure，否則 refresh cookie 不會被送出；
+  // 本地開發前後端同為 localhost（同 site），維持 strict 以保留 CSRF 防護。
+  sameSite: secureProd ? ('none' as const) : ('strict' as const),
+  // 防禦中間人竊聽：生產環境強制僅允許 HTTPS 加密傳輸（SameSite=None 亦強制要求 Secure）
   secure: secureProd,
   // 作用域限制：設定為 '/' 代表全站所有 API 路徑發送請求時皆會自動附帶此 Cookie
   path: '/',
@@ -52,9 +58,13 @@ export class AuthController {
    * POST /auth/register
    * 建立新帳號，成功後直接回傳 accessToken（免二次登入）。
    * Refresh token 寫入 httpOnly Cookie。
+   * 速率限制：10 次 / 1 小時，防帳號洪水。
    */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({
+    default: { ttl: REGISTER_THROTTLE_TTL, limit: REGISTER_THROTTLE_LIMIT },
+  })
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,

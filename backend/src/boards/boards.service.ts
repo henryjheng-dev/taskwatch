@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardRole } from '@/generated/prisma/client';
+import { AuthorizationService } from '../common/authz/authorization.service';
+import { Permission } from '../common/authz/permission.enum';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -12,7 +14,10 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 @Injectable()
 export class BoardsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authz: AuthorizationService,
+  ) {}
 
   // ─────────────────────────── Board CRUD ────────────────────────────────
 
@@ -90,7 +95,7 @@ export class BoardsService {
    * （OWASP: Object-Level Authorization）
    */
   async findOne(boardId: number, userId: number) {
-    await this.assertMember(boardId, userId);
+    await this.authz.requireMember(boardId, userId);
 
     return this.prisma.board.findUnique({
       where: { id: boardId },
@@ -121,9 +126,13 @@ export class BoardsService {
     });
   }
 
-  /** 更新看板設定，只有 ADMIN 成員可執行。 */
+  /** 更新看板設定，需要 UPDATE_BOARD 權限。 */
   async update(boardId: number, userId: number, dto: UpdateBoardDto) {
-    await this.assertAdmin(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.UPDATE_BOARD,
+    );
     await this.assertNotArchived(boardId);
     return this.prisma.board.update({
       where: { id: boardId },
@@ -131,30 +140,36 @@ export class BoardsService {
     });
   }
 
-  /** 刪除看板，只有 owner 可執行（ADMIN 不夠，必須是建立者）。 */
+  /** 刪除看板，只有 owner 可執行（關係型規則，不走角色矩陣）。 */
   async remove(boardId: number, userId: number) {
     const board = await this.prisma.board.findUnique({
       where: { id: boardId },
     });
     if (!board) throw new NotFoundException('看板不存在');
-    if (board.ownerId !== userId) {
-      throw new ForbiddenException('只有看板擁有者才能刪除看板');
-    }
+    this.authz.requireOwner(board, userId, '只有看板擁有者才能刪除看板');
     await this.prisma.board.delete({ where: { id: boardId } });
   }
 
-  /** 封存看板，ADMIN 或 owner 可執行。 */
+  /** 封存看板，需要 ARCHIVE_BOARD 權限。 */
   async archive(boardId: number, userId: number) {
-    await this.assertAdmin(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.ARCHIVE_BOARD,
+    );
     return this.prisma.board.update({
       where: { id: boardId },
       data: { archivedAt: new Date() },
     });
   }
 
-  /** 恢復看板，ADMIN 或 owner 可執行。 */
+  /** 恢復看板，需要 RESTORE_BOARD 權限。 */
   async restore(boardId: number, userId: number) {
-    await this.assertAdmin(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.RESTORE_BOARD,
+    );
     return this.prisma.board.update({
       where: { id: boardId },
       data: { archivedAt: null },
@@ -163,9 +178,13 @@ export class BoardsService {
 
   // ──────────────────────────── Members ──────────────────────────────────
 
-  /** 列出成員，只有成員才能查看。 */
+  /** 列出成員，需要 VIEW_MEMBERS 權限。 */
   async findMembers(boardId: number, userId: number) {
-    await this.assertMember(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.VIEW_MEMBERS,
+    );
     return this.prisma.boardMember.findMany({
       where: { boardId },
       include: {
@@ -175,9 +194,13 @@ export class BoardsService {
     });
   }
 
-  /** 搜尋使用者（排除已是看板成員的），用於邀請功能 */
+  /** 搜尋使用者（排除已是看板成員的），用於邀請功能，需要 SEARCH_MEMBERS 權限 */
   async searchUsers(boardId: number, userId: number, query: string) {
-    await this.assertMember(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.SEARCH_MEMBERS,
+    );
     const memberIds = await this.prisma.boardMember.findMany({
       where: { boardId },
       select: { userId: true },
@@ -197,12 +220,16 @@ export class BoardsService {
   }
 
   /**
-   * 新增成員，只有 ADMIN 可執行。
+   * 新增成員，需要 ADD_MEMBER 權限。
    * 先用 query 比對 name，找不到再比對 email。
    * 若都找不到拋 404（不提示哪個欄位不存在，防止 User Enumeration）。
    */
   async addMember(boardId: number, requesterId: number, dto: AddMemberDto) {
-    await this.assertAdmin(boardId, requesterId);
+    await this.authz.requirePermission(
+      requesterId,
+      boardId,
+      Permission.ADD_MEMBER,
+    );
     await this.assertNotArchived(boardId);
 
     let targetUser = await this.prisma.user.findFirst({
@@ -227,15 +254,31 @@ export class BoardsService {
     });
   }
 
-  /** 更新成員角色，只有 ADMIN 可執行；不能降低自己的 ADMIN 權限。 */
+  /**
+   * 更新成員角色，需要 UPDATE_MEMBER_ROLE 權限。
+   * - 不能降低自己的 ADMIN 權限（防止看板無管理員）
+   * - owner 的角色一律不可變更（ownerId 特權不進矩陣，改角色會造成權力分裂）
+   */
   async updateMemberRole(
     boardId: number,
     targetUserId: number,
     requesterId: number,
     dto: UpdateMemberRoleDto,
   ) {
-    await this.assertAdmin(boardId, requesterId);
+    await this.authz.requirePermission(
+      requesterId,
+      boardId,
+      Permission.UPDATE_MEMBER_ROLE,
+    );
     await this.assertNotArchived(boardId);
+
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      select: { ownerId: true },
+    });
+    if (board?.ownerId === targetUserId) {
+      throw new ForbiddenException('看板擁有者的角色無法變更');
+    }
 
     // 防止 ADMIN 自己把自己降級，導致看板無管理員
     if (targetUserId === requesterId && dto.role !== BoardRole.ADMIN) {
@@ -249,7 +292,8 @@ export class BoardsService {
   }
 
   /**
-   * 移除成員，ADMIN 可移除任何成員；一般成員只能移除自己（Leave board）。
+   * 移除成員：ADMIN（REMOVE_MEMBER 權限）可移除任何成員；
+   * 一般成員只能移除自己（Leave board，關係型規則）。
    * owner 不能被移除（必須先轉讓看板）。
    */
   async removeMember(
@@ -267,15 +311,13 @@ export class BoardsService {
       throw new ForbiddenException('看板擁有者無法被移除，請先轉讓看板');
     }
 
-    const requester = await this.prisma.boardMember.findUnique({
-      where: { boardId_userId: { boardId, userId: requesterId } },
-    });
-    const isAdmin = requester?.role === BoardRole.ADMIN;
-    const isSelf = targetUserId === requesterId;
-
-    if (!isAdmin && !isSelf) {
-      throw new ForbiddenException('您沒有權限移除此成員');
-    }
+    const requester = await this.authz.requireMember(boardId, requesterId);
+    this.authz.requireSelfOrAdmin(
+      targetUserId,
+      requester,
+      Permission.REMOVE_MEMBER,
+      '您沒有權限移除此成員',
+    );
 
     await this.prisma.boardMember.delete({
       where: { boardId_userId: { boardId, userId: targetUserId } },
@@ -316,30 +358,6 @@ export class BoardsService {
   }
 
   // ──────────────────────────── Helpers ──────────────────────────────────
-
-  /**
-   * 確認使用者是看板成員，否則拋 404（隱藏看板是否存在的資訊）。
-   * 回傳 BoardMember 記錄，讓呼叫者可以進一步檢查 role。
-   */
-  async assertMember(boardId: number, userId: number) {
-    const member = await this.prisma.boardMember.findUnique({
-      where: { boardId_userId: { boardId, userId } },
-    });
-    if (!member) throw new NotFoundException('看板不存在或您不是成員');
-    return member;
-  }
-
-  /**
-   * 確認使用者是 ADMIN，否則拋 403。
-   * 先呼叫 assertMember 確認成員資格（404），再確認角色（403）。
-   */
-  async assertAdmin(boardId: number, userId: number) {
-    const member = await this.assertMember(boardId, userId);
-    if (member.role !== BoardRole.ADMIN) {
-      throw new ForbiddenException('需要 ADMIN 權限才能執行此操作');
-    }
-    return member;
-  }
 
   /** 確認看板未封存，否則拋 Forbidden。 */
   async assertNotArchived(boardId: number) {

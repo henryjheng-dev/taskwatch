@@ -12,15 +12,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
+import type { AuthRequest } from '../auth/interface';
 import { ColumnsService } from './columns.service';
 import { CreateColumnDto } from './dto/create-column.dto';
 import { UpdateColumnDto } from './dto/update-column.dto';
 import { ReorderColumnsDto } from './dto/reorder-columns.dto';
-
-type AuthRequest = Request & { user: AuthUser };
 
 /**
  * 欄位路由掛在 /boards/:boardId/columns 下，

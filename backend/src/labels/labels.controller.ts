@@ -12,14 +12,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
+import type { AuthRequest } from '../auth/interface';
 import { LabelsService } from './labels.service';
 import { CreateLabelDto } from './dto/create-label.dto';
 import { UpdateLabelDto } from './dto/update-label.dto';
-
-type AuthRequest = Request & { user: AuthUser };
 
 /** 標籤是看板層級的資源，路由掛在 /boards/:boardId/labels */
 @UseGuards(JwtAuthGuard)
