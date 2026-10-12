@@ -13,17 +13,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
+import type { AuthRequest } from '../auth/interface';
 import { BoardsService } from './boards.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
-
-/** 方便取得型別化的 req.user */
-type AuthRequest = Request & { user: AuthUser };
 
 /**
  * 所有 /boards 路由都需要 JWT 驗證。

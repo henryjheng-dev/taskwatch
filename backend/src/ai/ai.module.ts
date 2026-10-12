@@ -5,7 +5,7 @@ import { AiService } from './ai.service';
 
 /**
  * AiModule 依賴：
- * - PrismaModule（@Global，自動可用）
+ * - PrismaModule（手動 import）
  * - RedisModule（@Global，自動可用）
  * - ConfigModule（@Global，自動可用）
  */

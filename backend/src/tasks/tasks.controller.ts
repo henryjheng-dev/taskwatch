@@ -12,15 +12,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUser } from '../auth/strategies/jwt.strategy';
+import type { AuthRequest } from '../auth/interface';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
-
-type AuthRequest = Request & { user: AuthUser };
+import { AddAssigneeDto } from './dto/add-assignee.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -88,9 +86,9 @@ export class TasksController {
   addAssignee(
     @Req() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
-    @Body('userId', ParseIntPipe) targetUserId: number,
+    @Body() dto: AddAssigneeDto,
   ) {
-    return this.tasksService.addAssignee(id, targetUserId, req.user.id);
+    return this.tasksService.addAssignee(id, dto.userId, req.user.id);
   }
 
   /** DELETE /tasks/:id/assignees/:userId → 204 移除指派 */
