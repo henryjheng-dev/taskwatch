@@ -89,6 +89,16 @@ const boardResponseSchema = {
   required: ['boardName', 'columns'],
 };
 
+/**
+ * 將 Gemini 回傳的日期字串轉為 Date。
+ * 沒有值或非法日期一律回傳 null（不寫入「今天」，也不讓 Invalid Date 炸掉交易）。
+ */
+export function parseDueDate(value?: string): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -108,7 +118,7 @@ export class AiService {
   /**
    * POST /ai/generate
    * 根據使用者描述，用 Gemini 生成看板結構，並批次寫入 DB。
-   * 每日限額 5 次（Redis 計數）。
+   * 每日限額（Redis 計數）。
    *
    * @returns 建立好的 Board 及其所有 Columns + Tasks
    */
@@ -124,7 +134,22 @@ export class AiService {
       );
     }
 
-    // ── 2. 呼叫 Gemini API（結構化輸出，不再需要文字描述格式）──────
+    // ── 2. Gemini 呼叫 + DB 寫入：任一失敗都退還額度 ──
+    try {
+      const parsedBoard = await this.callGemini(dto.prompt);
+      return await this.persistBoard(parsedBoard, userId);
+    } catch (error) {
+      this.logger.error('AI 生成失敗', error);
+      // 涵蓋 Gemini 失敗與 DB 交易失敗兩種情境，避免使用者因系統錯誤白白扣掉次數
+      await this.redis.decrement(usageKey);
+      throw new BadRequestException('AI 生成失敗，請重新嘗試或修改描述');
+    }
+  }
+
+  /**
+   * 呼叫 Gemini（結構化輸出），回傳解析後的看板結構。
+   */
+  private async callGemini(prompt: string): Promise<GeminiBoardSchema> {
     const systemPrompt = `你是一個專案管理助手。使用者會描述一個專案，你需要為其生成看板結構。
 規則：
 - 最多 5 個欄位
@@ -133,36 +158,33 @@ export class AiService {
 - 欄位名稱應反映工作流程狀態（例如：待辦、進行中、完成）
 - 若使用者有提到時程或截止日期，請為相關任務加上 dueDate（格式 YYYY-MM-DD）`;
 
-    let parsedBoard: GeminiBoardSchema;
-    try {
-      const response = await this.genai.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: dto.prompt,
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: 'application/json',
-          responseSchema: boardResponseSchema,
-          temperature: 1,
-          maxOutputTokens: 65536,
-          topP: 0.95,
-        },
-      });
+    const response = await this.genai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      contents: prompt,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: 'application/json',
+        responseSchema: boardResponseSchema,
+        temperature: 1,
+        maxOutputTokens: 65536,
+        topP: 0.95,
+      },
+    });
 
-      const raw = response.text;
-      if (!raw) {
-        throw new Error('Gemini 回傳內容為空');
-      }
-      // responseSchema 已保證輸出是符合結構的 JSON，不需要再處理 markdown code fence
-      parsedBoard = JSON.parse(raw) as GeminiBoardSchema;
-    } catch (error) {
-      this.logger.error('Gemini API 呼叫失敗或 JSON 解析失敗', error);
-      // 這次請求沒有成功產出結果，退還本次額度，避免使用者因系統錯誤而白白扣掉次數
-      await this.redis.decrement(usageKey);
-      throw new BadRequestException('AI 生成失敗，請重新嘗試或修改描述');
+    const raw = response.text;
+    if (!raw) {
+      throw new Error('Gemini 回傳內容為空');
     }
+    // responseSchema 已保證輸出是符合結構的 JSON，不需要再處理 markdown code fence
+    return JSON.parse(raw) as GeminiBoardSchema;
+  }
 
-    // ── 3. Prisma Transaction：批次建立 Board + Columns + Tasks ──
-    const board = await this.prisma.$transaction(async (tx) => {
+  /**
+   * Prisma Transaction：批次建立 Board + Columns + Tasks。
+   * 任一 INSERT 失敗會整筆回滾。
+   */
+  private async persistBoard(parsedBoard: GeminiBoardSchema, userId: number) {
+    return this.prisma.$transaction(async (tx) => {
       const createdBoard = await tx.board.create({
         data: {
           name: parsedBoard.boardName,
@@ -193,7 +215,7 @@ export class AiService {
               title: task.title,
               description: task.description ?? null,
               priority: task.priority.toUpperCase() as Priority,
-              dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
+              dueDate: parseDueDate(task.dueDate),
               position: taskIndex,
               columnId: createdCol.id,
               createdBy: userId,
@@ -215,7 +237,6 @@ export class AiService {
         },
       });
     });
-    return board;
   }
 
   /**

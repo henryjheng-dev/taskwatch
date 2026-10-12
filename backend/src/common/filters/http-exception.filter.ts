@@ -54,7 +54,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = res.message;
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      // 內部錯誤細節只進 logger（下方已記錄），不外洩給客戶端，
+      // 避免洩漏套件名稱、檔案路徑等資訊供攻擊者偵察。
+      message = 'Internal Server Error';
     }
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {

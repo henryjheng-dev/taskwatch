@@ -1,12 +1,10 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardsService } from '../boards/boards.service';
 import { ColumnsService } from '../columns/columns.service';
 import { LabelsService } from '../labels/labels.service';
+import { AuthorizationService } from '../common/authz/authorization.service';
+import { Permission } from '../common/authz/permission.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
@@ -29,14 +27,15 @@ export class TasksService {
     private readonly boardsService: BoardsService,
     private readonly columnsService: ColumnsService,
     private readonly labelsService: LabelsService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   // ────────────────────────── Task CRUD ──────────────────────────────────
 
   /**
    * 建立任務：
-   * 1. 確認 column 存在且屬於 boardId
-   * 2. 確認使用者是看板成員
+   * 1. requirePermission(CREATE_TASK) 確認權限
+   * 2. 確認 column 存在且屬於 boardId
    * 3. position 自動計算（同 column 的現有任務數量）
    */
   async create(
@@ -45,7 +44,7 @@ export class TasksService {
     userId: number,
     dto: CreateTaskDto,
   ) {
-    await this.boardsService.assertMember(boardId, userId);
+    await this.authz.requirePermission(userId, boardId, Permission.CREATE_TASK);
     await this.boardsService.assertNotArchived(boardId);
     await this.columnsService.assertColumnBelongsToBoard(columnId, boardId);
 
@@ -81,15 +80,19 @@ export class TasksService {
     });
     if (!task) throw new NotFoundException('任務不存在');
 
-    await this.boardsService.assertMember(task.column.boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      task.column.boardId,
+      Permission.VIEW_BOARD,
+    );
     return task;
   }
 
-  /** 更新任務內容，任務成員（看板成員）皆可編輯。 */
+  /** 更新任務內容，需要 UPDATE_TASK 權限。 */
   async update(taskId: number, userId: number, dto: UpdateTaskDto) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    await this.boardsService.assertMember(boardId, userId);
+    await this.authz.requirePermission(userId, boardId, Permission.UPDATE_TASK);
     await this.boardsService.assertNotArchived(boardId);
 
     return this.prisma.task.update({
@@ -107,18 +110,19 @@ export class TasksService {
     });
   }
 
-  /** 刪除任務，需要看板 ADMIN 或任務建立者。 */
+  /** 刪除任務：DELETE_TASK 權限者 或 任務建立者（關係型規則）。 */
   async remove(taskId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    const member = await this.boardsService.assertMember(boardId, userId);
+    const member = await this.authz.requireMember(boardId, userId);
     await this.boardsService.assertNotArchived(boardId);
 
-    const isAdmin = member.role === 'ADMIN';
-    const isCreator = task.createdBy === userId;
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException('只有 ADMIN 或任務建立者才能刪除任務');
-    }
+    this.authz.requireCreatorOrAdmin(
+      task,
+      member,
+      Permission.DELETE_TASK,
+      '只有 ADMIN 或任務建立者才能刪除任務',
+    );
 
     await this.prisma.task.delete({ where: { id: taskId } });
   }
@@ -130,7 +134,7 @@ export class TasksService {
   async move(taskId: number, userId: number, dto: MoveTaskDto) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    await this.boardsService.assertMember(boardId, userId);
+    await this.authz.requirePermission(userId, boardId, Permission.MOVE_TASK);
     await this.boardsService.assertNotArchived(boardId);
 
     const targetColumnId = dto.targetColumnId ?? task.columnId;
@@ -151,16 +155,20 @@ export class TasksService {
 
   // ────────────────────────── Assignees ──────────────────────────────────
 
-  /** 指派成員到任務（任何看板成員都可以指派）。 */
+  /** 指派成員到任務，需要 ASSIGN_TASK 權限。 */
   async addAssignee(taskId: number, targetUserId: number, requesterId: number) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
 
-    await this.boardsService.assertMember(boardId, requesterId);
+    await this.authz.requirePermission(
+      requesterId,
+      boardId,
+      Permission.ASSIGN_TASK,
+    );
     await this.boardsService.assertNotArchived(boardId);
 
     // 確認被指派者也是看板成員
-    await this.boardsService.assertMember(boardId, targetUserId);
+    await this.authz.requireMember(boardId, targetUserId);
 
     return this.prisma.taskAssignee.upsert({
       where: { taskId_userId: { taskId, userId: targetUserId } },
@@ -169,7 +177,7 @@ export class TasksService {
     });
   }
 
-  /** 移除指派（ADMIN 或被指派者本人）。 */
+  /** 移除指派：REMOVE_ASSIGNEE 權限者 或 被指派者本人（關係型規則）。 */
   async removeAssignee(
     taskId: number,
     targetUserId: number,
@@ -177,14 +185,15 @@ export class TasksService {
   ) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    const member = await this.boardsService.assertMember(boardId, requesterId);
+    const member = await this.authz.requireMember(boardId, requesterId);
     await this.boardsService.assertNotArchived(boardId);
 
-    const isAdmin = member.role === 'ADMIN';
-    const isSelf = targetUserId === requesterId;
-    if (!isAdmin && !isSelf) {
-      throw new ForbiddenException('只有 ADMIN 或本人才能移除指派');
-    }
+    this.authz.requireSelfOrAdmin(
+      targetUserId,
+      member,
+      Permission.REMOVE_ASSIGNEE,
+      '只有 ADMIN 或本人才能移除指派',
+    );
 
     await this.prisma.taskAssignee.delete({
       where: { taskId_userId: { taskId, userId: targetUserId } },
@@ -193,11 +202,15 @@ export class TasksService {
 
   // ──────────────────────────── Labels ───────────────────────────────────
 
-  /** 為任務貼上標籤（看板成員皆可）。 */
+  /** 為任務貼上標籤，需要 UPDATE_TASK_LABELS 權限。 */
   async attachLabel(taskId: number, labelId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    await this.boardsService.assertMember(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.UPDATE_TASK_LABELS,
+    );
     await this.boardsService.assertNotArchived(boardId);
 
     // 確認 label 屬於同一看板
@@ -213,11 +226,15 @@ export class TasksService {
     });
   }
 
-  /** 移除任務標籤（看板成員皆可）。 */
+  /** 移除任務標籤，需要 UPDATE_TASK_LABELS 權限。 */
   async detachLabel(taskId: number, labelId: number, userId: number) {
     const task = await this.getTaskWithBoard(taskId);
     const boardId = task.column.boardId;
-    await this.boardsService.assertMember(boardId, userId);
+    await this.authz.requirePermission(
+      userId,
+      boardId,
+      Permission.UPDATE_TASK_LABELS,
+    );
     await this.boardsService.assertNotArchived(boardId);
 
     await this.prisma.taskLabel.delete({

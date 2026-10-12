@@ -5,13 +5,15 @@ import { TasksController } from './tasks.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { BoardsModule } from '../boards/boards.module';
 import { ColumnsModule } from '../columns/columns.module';
+import { AuthorizationModule } from '../common/authz/authorization.module';
 
 @Module({
   imports: [
     PrismaModule,
-    BoardsModule, // 注入 BoardsService（assertMember / assertAdmin）
+    BoardsModule, // 注入 BoardsService（assertNotArchived）
     ColumnsModule, // 注入 ColumnsService（assertColumnBelongsToBoard）
     LabelsModule,
+    AuthorizationModule, // 注入 AuthorizationService（Permission 矩陣）
   ],
   controllers: [TasksController],
   providers: [TasksService],

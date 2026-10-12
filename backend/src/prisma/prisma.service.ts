@@ -7,12 +7,18 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 export class PrismaService extends PrismaClient {
   constructor(private configService: ConfigService) {
     const nestLogger = new Logger('PrismaService');
+    // DB_SSL 環境開關：生產環境建議設 'true'，啟用 TLS 連線。
+    // allowPublicKeyRetrieval 讓 client 可透過明文連線索取伺服器 RSA 公鑰，
+    // 存在中間人攔截認證交換的風險；用 TLS 連線即可消除此風險面。
+    const useSsl = configService.get<string>('DB_SSL') === 'true';
     const adapter = new PrismaMariaDb({
       host: configService.get<string>('DB_HOST'),
       user: configService.get<string>('DB_USER'),
       password: configService.get<string>('DB_PASSWORD'),
       database: configService.get<string>('DB_NAME'),
       port: configService.get<number>('DB_PORT'),
+
+      ...(useSsl ? { ssl: true } : {}),
 
       // 在這裡加入允許公鑰檢索的參數，解決連線無聲卡死的問題
       allowPublicKeyRetrieval: true,

@@ -11,8 +11,11 @@ import { ColumnsModule } from './columns/columns.module';
 import { TasksModule } from './tasks/tasks.module';
 import { LabelsModule } from './labels/labels.module';
 import { RedisModule } from './redis/redis.module';
+import { REDIS_CLIENT } from './redis/redis.constants';
 import { AiModule } from './ai/ai.module';
 import { CustomThrottlerGuard } from './common/guards/throttler.guard';
+import { RedisThrottlerStorage } from './common/throttler/redis-throttler.storage';
+import type { Redis } from 'ioredis';
 import Joi from 'joi';
 
 @Module({
@@ -31,11 +34,13 @@ import Joi from 'joi';
         // ── Database ────────────────────────────────────────────────
         DATABASE_URL: Joi.string().uri().required(),
         DB_HOST: Joi.string().required(),
-        // TCP port 為 16-bit，範圍 1~65535
+        // TCP port 合法範圍 1~65535
         DB_PORT: Joi.number().integer().min(1).max(65535).required(),
         DB_USER: Joi.string().required(),
         DB_PASSWORD: Joi.string().required(),
         DB_NAME: Joi.string().required(),
+        // 是否啟用 DB TLS 連線（'true'/'false'），生產環境建議設 'true'
+        DB_SSL: Joi.string().valid('true', 'false').default('false'),
 
         // ── JWT ───────────────────────────────────────────────────
         // 亂碼：最少 32 字元 (256-bit等級的演算法)，防止暴力破解
@@ -70,15 +75,17 @@ import Joi from 'joi';
     PrismaModule,
     ThrottlerModule.forRootAsync({
       // ConfigModule 已是 isGlobal，不需要重複 imports
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      inject: [ConfigService, REDIS_CLIENT],
+      useFactory: (configService: ConfigService, redisClient: Redis) => ({
         throttlers: [
           {
-            // THROTTLE_TTL 從 .env 讀取（秒） × 1000 = 毫秒 (套件用的單位)
+            // THROTTLE_TTL 從 .env 讀取（秒） × 1000 = 毫秒
             ttl: configService.getOrThrow<number>('THROTTLE_TTL') * 1000,
             limit: configService.getOrThrow<number>('THROTTLE_LIMIT'),
           },
         ],
+        // 用 Redis 當限流 storage，確保多實例部署下計數共享、限流不失效
+        storage: new RedisThrottlerStorage(redisClient),
       }),
     }),
     AuthModule,
