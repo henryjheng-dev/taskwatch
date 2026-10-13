@@ -64,6 +64,8 @@ import Joi from 'joi';
         // ── Rate Limiting ─────────────────────────────────────────
         THROTTLE_TTL: Joi.number().integer().min(1).default(60),
         THROTTLE_LIMIT: Joi.number().integer().min(1).default(100),
+        // 單位：秒
+        THROTTLE_BLOCK_DURATION: Joi.number().integer().min(1).default(900),
       }),
       validationOptions: {
         // 直接允許作業系統自帶的其他未知環境變數
@@ -82,6 +84,9 @@ import Joi from 'joi';
             // THROTTLE_TTL 從 .env 讀取（秒） × 1000 = 毫秒
             ttl: configService.getOrThrow<number>('THROTTLE_TTL') * 1000,
             limit: configService.getOrThrow<number>('THROTTLE_LIMIT'),
+            blockDuration:
+              configService.getOrThrow<number>('THROTTLE_BLOCK_DURATION') *
+              1000,
           },
         ],
         // 用 Redis 當限流 storage，確保多實例部署下計數共享、限流不失效
