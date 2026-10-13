@@ -12,6 +12,7 @@ import {
 // import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -50,8 +51,11 @@ const cookieOptions = (secureProd: boolean) => ({
 export class AuthController {
   private readonly isProduction: boolean;
 
-  constructor(private readonly authService: AuthService) {
-    this.isProduction = process.env['NODE_ENV'] === 'production';
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {
+    this.isProduction = this.configService.get('NODE_ENV') === 'production';
   }
 
   /**
