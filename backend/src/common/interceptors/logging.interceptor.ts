@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { finalize } from 'rxjs/operators';
 import type { Request } from 'express';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const now = Date.now();
 
     return next.handle().pipe(
-      tap(() => {
+      finalize(() => {
         const elapsed = Date.now() - now;
         this.logger.log(`${method} ${url} → ${elapsed}ms`);
       }),
