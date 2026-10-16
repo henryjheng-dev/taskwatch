@@ -50,16 +50,6 @@ export class AuthorizationService {
     return member;
   }
 
-  /** 查詢是否有權限（不回傳例外，供條件判斷用） */
-  async can(
-    userId: number,
-    boardId: number,
-    permission: Permission,
-  ): Promise<boolean> {
-    const member = await this.findMember(boardId, userId);
-    return !!member && ROLE_PERMISSIONS[member.role].has(permission);
-  }
-
   /** 要求擁有指定權限：非成員 404、無權限 403；成功回傳成員身分 */
   async requirePermission(
     userId: number,
