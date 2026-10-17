@@ -12,6 +12,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import ms, { type StringValue } from 'ms';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -31,7 +32,7 @@ const REGISTER_THROTTLE_LIMIT = 10;
 const REFRESH_COOKIE = 'refresh_token';
 
 /** Cookie 設定 */
-const cookieOptions = (secureProd: boolean) => ({
+const cookieOptions = (secureProd: boolean, maxAge: number) => ({
   // 防範 XSS 攻擊：禁止前端 JS 存取，防止惡意腳本偷取 Token
   httpOnly: true,
   // 部署架構考量（前端 Vite 靜態 + 後端 Railway/AWS 為不同 site）：
@@ -42,19 +43,23 @@ const cookieOptions = (secureProd: boolean) => ({
   secure: secureProd,
   // 作用域限制：設定為 '/' 代表全站所有 API 路徑發送請求時皆會自動附帶此 Cookie
   path: '/',
-  // 生命週期設定：單位毫秒 (ms)，設定 7 天後自動失效並被瀏覽器清除
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  // 生命週期：與 DB token 到期同源（JWT_REFRESH_EXPIRES_IN），避免兩邊漂移
+  maxAge,
 });
 
 @Controller('auth')
 export class AuthController {
   private readonly isProduction: boolean;
+  private readonly refreshCookieMaxAge: number;
 
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {
     this.isProduction = this.configService.get('NODE_ENV') === 'production';
+    this.refreshCookieMaxAge = ms(
+      this.configService.getOrThrow<StringValue>('JWT_REFRESH_EXPIRES_IN'),
+    );
   }
 
   /**
@@ -74,7 +79,11 @@ export class AuthController {
   ) {
     const { accessToken, refreshToken, user } =
       await this.authService.register(dto);
-    res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
+    res.cookie(
+      REFRESH_COOKIE,
+      refreshToken,
+      cookieOptions(this.isProduction, this.refreshCookieMaxAge),
+    );
     return { accessToken, user };
   }
 
@@ -94,7 +103,11 @@ export class AuthController {
   ) {
     const { accessToken, refreshToken, user } =
       await this.authService.login(dto);
-    res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
+    res.cookie(
+      REFRESH_COOKIE,
+      refreshToken,
+      cookieOptions(this.isProduction, this.refreshCookieMaxAge),
+    );
     return { accessToken, user };
   }
 
@@ -119,7 +132,11 @@ export class AuthController {
     const { accessToken, refreshToken } =
       await this.authService.refreshTokens(raw);
 
-    res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
+    res.cookie(
+      REFRESH_COOKIE,
+      refreshToken,
+      cookieOptions(this.isProduction, this.refreshCookieMaxAge),
+    );
     return { accessToken };
   }
 
@@ -147,7 +164,11 @@ export class AuthController {
   ) {
     const { accessToken, refreshToken, user } =
       await this.authService.googleLogin(dto);
-    res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions(this.isProduction));
+    res.cookie(
+      REFRESH_COOKIE,
+      refreshToken,
+      cookieOptions(this.isProduction, this.refreshCookieMaxAge),
+    );
     return { accessToken, user };
   }
 }
