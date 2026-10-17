@@ -41,7 +41,7 @@ enum AuthProvider {
 model RefreshToken {
   id Int @id @default(autoincrement())
   userId Int @map("user_id") 
-  token String @db.VarChar(255)
+  tokenHash String @map("token") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
@@ -49,7 +49,7 @@ model RefreshToken {
   user User @relation(fields: [userId],references: [id],onDelete: Cascade)
 
   @@index([userId])
-  @@index([token])
+  @@index([tokenHash])
   @@map("refresh_tokens")
 }
 

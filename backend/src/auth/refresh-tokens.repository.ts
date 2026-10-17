@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
+
+const hashToken = (raw: string): string =>
+  createHash('sha256').update(raw).digest('hex');
 
 @Injectable()
 export class RefreshTokensRepository {
@@ -9,7 +13,7 @@ export class RefreshTokensRepository {
     await this.prisma.refreshToken.create({
       data: {
         userId,
-        token: rawToken,
+        tokenHash: hashToken(rawToken),
         expiresAt,
       },
     });
@@ -18,7 +22,7 @@ export class RefreshTokensRepository {
   async revokeOne(rawToken: string): Promise<{ userId: number } | null> {
     const result = await this.prisma.refreshToken.updateMany({
       where: {
-        token: rawToken,
+        tokenHash: hashToken(rawToken),
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
@@ -33,7 +37,7 @@ export class RefreshTokensRepository {
 
     // 取得 userId 供後續使用
     const record = await this.prisma.refreshToken.findFirst({
-      where: { token: rawToken },
+      where: { tokenHash: hashToken(rawToken) },
       select: { userId: true },
     });
 
@@ -45,7 +49,7 @@ export class RefreshTokensRepository {
    */
   async findRevoked(rawToken: string): Promise<{ userId: number } | null> {
     const record = await this.prisma.refreshToken.findFirst({
-      where: { token: rawToken, revokedAt: { not: null } },
+      where: { tokenHash: hashToken(rawToken), revokedAt: { not: null } },
       select: { userId: true },
     });
     return record ?? null;
