@@ -9,7 +9,6 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-// import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -140,7 +139,6 @@ export class AuthController {
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
   }
 
-  // 新增 @Post('google')
   @Post('google')
   @HttpCode(HttpStatus.OK)
   async googleLogin(

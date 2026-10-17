@@ -21,12 +21,6 @@ export interface LoginResponse {
   };
 }
 
-/** Token Rotation 回傳格式 */
-export interface RefreshResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
 /** 內部 Token Pair（不對外暴露 user） */
 export interface TokenPair {
   accessToken: string;
