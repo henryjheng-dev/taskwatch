@@ -170,9 +170,9 @@ export class BoardsService {
    * 搜尋範圍限於使用者是 owner 或 member 的看板，不可跨權限查詢。
    */
   async search(userId: number, query: string) {
-    // 空字串或過短關鍵字不回傳清單，避免行為等同「列出全部」
+    // 空字串不回傳清單，避免行為等同「列出全部」；1 個字即可搜尋
     const keyword = query.trim();
-    if (keyword.length < 2) return [];
+    if (!keyword) return [];
 
     return this.prisma.board.findMany({
       where: {

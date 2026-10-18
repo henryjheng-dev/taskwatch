@@ -24,7 +24,6 @@ export class BoardMembersService {
     private readonly boardsService: BoardsService,
   ) {}
 
-  /** 列出成員，需要 VIEW_MEMBERS 權限。 */
   async findMembers(boardId: number, userId: number) {
     await this.authz.requirePermission(
       userId,
@@ -48,9 +47,9 @@ export class BoardMembersService {
       Permission.SEARCH_MEMBERS,
     );
 
-    // 空字串或過短關鍵字不回傳名單，避免變成使用者目錄列舉
+    // 空字串不回傳名單（避免等於列出全部）；1 個字即可搜尋，符合中文姓氏情境
     const keyword = query.trim();
-    if (keyword.length < 2) return [];
+    if (!keyword) return [];
 
     const memberIds = await this.prisma.boardMember.findMany({
       where: { boardId },
