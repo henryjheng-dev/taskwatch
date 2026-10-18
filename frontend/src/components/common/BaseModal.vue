@@ -21,6 +21,8 @@ const emit = defineEmits<{
 }>();
 
 function onKeydown(e: KeyboardEvent) {
+  // IME 組字中（注音/拼音）：Escape 是取消選字，不應關閉 Modal
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Escape' && props.show) {
     emit('close');
   }

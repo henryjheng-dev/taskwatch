@@ -38,6 +38,9 @@ watch(navigableItems, (val) => {
 })
 
 function handleKeydown(e: KeyboardEvent, close: () => void) {
+  // IME 組字中（注音/拼音選字）：不可攔截方向鍵與 Enter，否則會破壞選字並清掉搜尋狀態
+  if (isComposing.value || e.isComposing || e.keyCode === 229) return
+
   const items = navigableItems.value
   if (items.length === 0) return
 
@@ -112,7 +115,7 @@ onUnmounted(() => {
       </button>
     </template>
     <template #dropdown="{ close }">
-      <div @keydown="(e) => handleKeydown(e, close)">
+      <div class="w-80" @keydown="(e) => handleKeydown(e, close)">
         <!-- Search Input -->
         <div class="p-2 border-b border-black/8">
           <input
@@ -128,7 +131,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Recent Boards -->
-        <div v-if="!isSearching" class="py-2">
+        <div v-if="!isSearching" class="py-2 h-48 overflow-y-auto">
           <p class="px-4 py-1 text-[13px] font-light leading-relaxed text-gray-600">
             最近開啟的面板
           </p>
@@ -153,9 +156,9 @@ onUnmounted(() => {
         </div>
 
         <!-- Search Results -->
-        <div v-else class="py-2">
+        <div v-else class="py-2 h-48 overflow-y-auto">
           <!-- Loading -->
-          <div v-if="loading" class="flex items-center justify-center py-6">
+          <div v-if="loading" class="flex h-full items-center justify-center">
             <LoaderCircle class="w-5 h-5 animate-spin text-gray-600" :stroke-width="1.5" />
           </div>
 
@@ -179,7 +182,7 @@ onUnmounted(() => {
           </template>
 
           <!-- Empty -->
-          <p v-else class="px-4 py-3 text-xs font-light leading-relaxed text-slate-500 text-center">
+          <p v-else class="flex h-full items-center justify-center px-4 text-xs font-light leading-relaxed text-slate-500 text-center">
             未找到對應的搜尋結果。
           </p>
         </div>

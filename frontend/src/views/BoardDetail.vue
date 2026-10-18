@@ -28,6 +28,8 @@ const showCreateModal = ref(false);
 const creatingColumnId = ref(0);
 const newColumnName = ref('');
 const addingColumn = ref(false);
+// 新增欄位輸入框的 IME 組字狀態：組字期間 Enter／Escape 不可觸發新增或清空
+const isColumnInputComposing = ref(false);
 const selectedTaskId = ref<number | null>(null);
 const showArchiveConfirm = ref(false);
 const showDeleteBoardConfirm = ref(false);
@@ -153,6 +155,25 @@ async function handleAddColumn() {
   } finally {
     addingColumn.value = false;
   }
+}
+
+// ─── 新增欄位輸入框：IME 組字期間不攔截 Enter／Escape ──────────────
+function onColumnCompositionStart() {
+  isColumnInputComposing.value = true;
+}
+
+function onColumnCompositionEnd() {
+  isColumnInputComposing.value = false;
+}
+
+function onColumnEnter(e: KeyboardEvent) {
+  if (isColumnInputComposing.value || e.isComposing || e.keyCode === 229) return;
+  handleAddColumn();
+}
+
+function onColumnEscape(e: KeyboardEvent) {
+  if (isColumnInputComposing.value || e.isComposing || e.keyCode === 229) return;
+  newColumnName.value = '';
 }
 </script>
 
@@ -281,8 +302,10 @@ async function handleAddColumn() {
               v-model="newColumnName"
               placeholder="+ Add column"
               class="w-full h-8 px-2 bg-transparent text-sm text-gray-900 rounded-sm border border-dashed border-black/8 placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-1000 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-200"
-              @keydown.enter="handleAddColumn"
-              @keydown.escape="newColumnName = ''"
+              @compositionstart="onColumnCompositionStart"
+              @compositionend="onColumnCompositionEnd"
+              @keydown.enter="onColumnEnter"
+              @keydown.escape="onColumnEscape"
             />
             <button
               v-if="newColumnName.trim()"

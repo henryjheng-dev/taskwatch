@@ -19,6 +19,17 @@ const emit = defineEmits<{
 const inviting = ref(false);
 const selectedUser = ref<UserSearchResult | null>(null);
 
+// IME（注音/拼音）組字狀態：組字期間不可讓下拉選單攔截鍵盤
+const isComposing = ref(false);
+
+function onCompositionStart() {
+  isComposing.value = true;
+}
+
+function onCompositionEnd() {
+  isComposing.value = false;
+}
+
 // ─── 邀請狀態提示（輸入匡下方顯示）────────────────────────────────
 const statusMessage = ref('');
 const statusType = ref<'success' | 'error'>('success');
@@ -63,6 +74,9 @@ function scrollSelectedIntoView() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  // IME 組字中（注音/拼音選字）：不可攔截方向鍵與 Enter，否則會破壞選字
+  if (isComposing.value || e.isComposing || e.keyCode === 229) return;
+
   if (results.value.length === 0) return;
 
   switch (e.key) {
@@ -146,6 +160,8 @@ function handleClose() {
             type="text"
             placeholder="搜尋名稱或 Email…"
             class="w-full border border-black/8 rounded-md px-3 py-2 text-sm outline-none focus:border-black/20 transition-colors"
+            @compositionstart="onCompositionStart"
+            @compositionend="onCompositionEnd"
           />
           <div
             v-if="query.trim() && !selectedUser"
@@ -153,11 +169,11 @@ function handleClose() {
           >
             <div
               ref="listRef"
-              class="max-h-48 overflow-y-auto"
+              class="h-48 overflow-y-auto"
               @mouseenter="selectedIndex = -1"
             >
-            <div v-if="loading" class="px-3 py-2 text-sm text-gray-600">搜尋中…</div>
-            <div v-else-if="results.length === 0" class="px-3 py-2 text-sm text-gray-500">
+            <div v-if="loading" class="flex h-full items-center justify-center text-sm text-gray-600">搜尋中…</div>
+            <div v-else-if="results.length === 0" class="flex h-full items-center justify-center text-sm text-gray-500">
               無符合的使用者
             </div>
             <button

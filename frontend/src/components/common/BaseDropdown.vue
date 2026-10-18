@@ -42,6 +42,8 @@ function focusIndex(dir: -1 | 1) {
 
 function onKeydown(e: KeyboardEvent) {
   if (!isOpen.value) return
+  // IME 組字中（注音/拼音）：不可攔截方向鍵與 Escape，否則會破壞選字並把焦點跳到選單項目
+  if (e.isComposing || e.keyCode === 229) return
   switch (e.key) {
     case 'ArrowDown':
       e.preventDefault()
