@@ -9,18 +9,13 @@ import { Permission } from './permission.enum';
  * 不在矩陣內，收斂在 AuthorizationService 的 policy helper。
  */
 export const ROLE_PERMISSIONS: Record<BoardRole, ReadonlySet<Permission>> = {
-  /** 來賓：唯讀看板 */
-  GUEST: new Set<Permission>([
-    Permission.VIEW_BOARD,
-    Permission.VIEW_MEMBERS,
-    Permission.SEARCH_MEMBERS,
-  ]),
+  /** 來賓：唯讀看板（可看成員，但不能搜尋使用者目錄） */
+  GUEST: new Set<Permission>([Permission.VIEW_BOARD, Permission.VIEW_MEMBERS]),
 
-  /** 成員：可協作（建立/編輯欄位與任務） */
+  /** 成員：可協作（建立/編輯欄位與任務；搜尋使用者僅限 ADMIN，與邀請功能綁定） */
   MEMBER: new Set<Permission>([
     Permission.VIEW_BOARD,
     Permission.VIEW_MEMBERS,
-    Permission.SEARCH_MEMBERS,
     Permission.CREATE_COLUMN,
     Permission.CREATE_TASK,
     Permission.UPDATE_TASK,

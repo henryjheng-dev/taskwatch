@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -142,6 +143,9 @@ export class BoardsService {
 
   /** 刪除看板，只有 owner 可執行（關係型規則，不走角色矩陣）。 */
   async remove(boardId: number, userId: number) {
+    // 先確認是成員：非成員一律 404，避免洩漏看板存在性
+    await this.authz.requireMember(boardId, userId);
+
     const board = await this.prisma.board.findUnique({
       where: { id: boardId },
     });
@@ -201,6 +205,11 @@ export class BoardsService {
       boardId,
       Permission.SEARCH_MEMBERS,
     );
+
+    // 空字串或過短關鍵字不回傳名單，避免變成使用者目錄列舉
+    const keyword = query.trim();
+    if (keyword.length < 2) return [];
+
     const memberIds = await this.prisma.boardMember.findMany({
       where: { boardId },
       select: { userId: true },
@@ -209,7 +218,10 @@ export class BoardsService {
       where: {
         AND: [
           {
-            OR: [{ name: { contains: query } }, { email: { contains: query } }],
+            OR: [
+              { name: { contains: keyword } },
+              { email: { contains: keyword } },
+            ],
           },
           { id: { notIn: memberIds.map((m) => m.userId) } },
         ],
@@ -232,12 +244,22 @@ export class BoardsService {
     );
     await this.assertNotArchived(boardId);
 
-    let targetUser = await this.prisma.user.findFirst({
-      where: { name: dto.query },
+    const query = dto.query.trim();
+
+    // 同名可能有多人：不明確時要求改用 Email，避免加到錯誤的人
+    const nameMatches = await this.prisma.user.findMany({
+      where: { name: query },
+      take: 2,
     });
+    if (nameMatches.length > 1) {
+      throw new BadRequestException('找到多位同名使用者，請改用 Email 邀請');
+    }
+
+    let targetUser: { id: number } | null = nameMatches[0] ?? null;
     if (!targetUser) {
       targetUser = await this.prisma.user.findFirst({
-        where: { email: dto.query },
+        where: { email: query },
+        select: { id: true },
       });
     }
     if (!targetUser) throw new NotFoundException('找不到此使用者');
@@ -285,6 +307,12 @@ export class BoardsService {
       throw new ForbiddenException('無法降低自己的管理員權限');
     }
 
+    const target = await this.prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId, userId: targetUserId } },
+      select: { userId: true },
+    });
+    if (!target) throw new NotFoundException('成員不存在');
+
     return this.prisma.boardMember.update({
       where: { boardId_userId: { boardId, userId: targetUserId } },
       data: { role: dto.role },
@@ -301,23 +329,32 @@ export class BoardsService {
     targetUserId: number,
     requesterId: number,
   ) {
+    // 先確認請求者是成員：非成員一律 404，避免洩漏看板存在性
+    const requester = await this.authz.requireMember(boardId, requesterId);
+    await this.assertNotArchived(boardId);
+
     const board = await this.prisma.board.findUnique({
       where: { id: boardId },
+      select: { ownerId: true },
     });
     if (!board) throw new NotFoundException('看板不存在');
-    await this.assertNotArchived(boardId);
 
     if (board.ownerId === targetUserId) {
       throw new ForbiddenException('看板擁有者無法被移除，請先轉讓看板');
     }
 
-    const requester = await this.authz.requireMember(boardId, requesterId);
     this.authz.requireSelfOrAdmin(
       targetUserId,
       requester,
       Permission.REMOVE_MEMBER,
       '您沒有權限移除此成員',
     );
+
+    const target = await this.prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId, userId: targetUserId } },
+      select: { userId: true },
+    });
+    if (!target) throw new NotFoundException('成員不存在');
 
     await this.prisma.boardMember.delete({
       where: { boardId_userId: { boardId, userId: targetUserId } },
@@ -331,10 +368,14 @@ export class BoardsService {
    * 搜尋範圍限於使用者是 owner 或 member 的看板，不可跨權限查詢。
    */
   async search(userId: number, query: string) {
+    // 空字串或過短關鍵字不回傳清單，避免行為等同「列出全部」
+    const keyword = query.trim();
+    if (keyword.length < 2) return [];
+
     return this.prisma.board.findMany({
       where: {
         boardMembers: { some: { userId } },
-        name: { contains: query },
+        name: { contains: keyword },
         archivedAt: null,
       },
       take: 10,
@@ -350,6 +391,7 @@ export class BoardsService {
     return this.prisma.board.findMany({
       where: {
         boardMembers: { some: { userId } },
+        archivedAt: null,
       },
       take: 3,
       orderBy: { updatedAt: 'desc' },
