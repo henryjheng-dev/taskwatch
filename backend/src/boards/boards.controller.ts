@@ -16,6 +16,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthRequest } from '../auth/interface';
 import { BoardsService } from './boards.service';
+import { BoardMembersService } from './board-members.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -28,7 +29,10 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('boards')
 export class BoardsController {
-  constructor(private readonly boardsService: BoardsService) {}
+  constructor(
+    private readonly boardsService: BoardsService,
+    private readonly boardMembersService: BoardMembersService,
+  ) {}
 
   // ─────────────────────────── Board CRUD ────────────────────────────────
 
@@ -107,13 +111,13 @@ export class BoardsController {
     @Param('id', ParseIntPipe) id: number,
     @Query('q') query: string,
   ) {
-    return this.boardsService.searchUsers(id, req.user.id, query ?? '');
+    return this.boardMembersService.searchUsers(id, req.user.id, query ?? '');
   }
 
   /** GET /boards/:id/members → 200 看板成員列表 */
   @Get(':id/members')
   findMembers(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
-    return this.boardsService.findMembers(id, req.user.id);
+    return this.boardMembersService.findMembers(id, req.user.id);
   }
 
   /** POST /boards/:id/members → 201 新增成員（ADMIN only） */
@@ -124,7 +128,7 @@ export class BoardsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddMemberDto,
   ) {
-    return this.boardsService.addMember(id, req.user.id, dto);
+    return this.boardMembersService.addMember(id, req.user.id, dto);
   }
 
   /** PATCH /boards/:id/members/:userId → 200 更新成員角色（ADMIN only） */
@@ -135,7 +139,7 @@ export class BoardsController {
     @Param('userId', ParseIntPipe) targetUserId: number,
     @Body() dto: UpdateMemberRoleDto,
   ) {
-    return this.boardsService.updateMemberRole(
+    return this.boardMembersService.updateMemberRole(
       id,
       targetUserId,
       req.user.id,
@@ -151,6 +155,6 @@ export class BoardsController {
     @Param('id', ParseIntPipe) id: number,
     @Param('userId', ParseIntPipe) targetUserId: number,
   ) {
-    return this.boardsService.removeMember(id, targetUserId, req.user.id);
+    return this.boardMembersService.removeMember(id, targetUserId, req.user.id);
   }
 }
