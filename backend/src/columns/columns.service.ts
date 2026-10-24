@@ -19,11 +19,6 @@ export class ColumnsService {
     private readonly authz: AuthorizationService,
   ) {}
 
-  /**
-   * 建立欄位：
-   * - requirePermission(CREATE_COLUMN) 確認使用者有此權限
-   * - position 未提供時自動取「現有欄位數量」作為末尾位置
-   */
   async create(boardId: number, userId: number, dto: CreateColumnDto) {
     await this.authz.requirePermission(
       userId,

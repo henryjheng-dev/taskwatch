@@ -31,12 +31,6 @@ export class AuthService {
     private readonly googleClient: OAuth2Client,
   ) {}
 
-  /**
-   * 註冊新帳號，並回傳 Token Pair。
-   * 若 Email 已被註冊，會丟出 ConflictException。
-   * 用passwordHash存密碼，避免明文存入 DB。
-   * authProvider 設為 EMAIL，表示此帳號是用 Email/密碼方式註冊的。
-   */
   async register(dto: RegisterDto): Promise<LoginResponse> {
     try {
       const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);

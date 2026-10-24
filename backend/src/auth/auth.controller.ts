@@ -33,17 +33,10 @@ const REFRESH_COOKIE = 'refresh_token';
 
 /** Cookie 設定 */
 const cookieOptions = (secureProd: boolean, maxAge: number) => ({
-  // 防範 XSS 攻擊：禁止前端 JS 存取，防止惡意腳本偷取 Token
   httpOnly: true,
-  // 部署架構考量（前端 Vite 靜態 + 後端 Railway/AWS 為不同 site）：
-  // 生產環境跨站 XHR 必須 SameSite=None + Secure，否則 refresh cookie 不會被送出；
-  // 本地開發前後端同為 localhost（同 site），維持 strict 以保留 CSRF 防護。
   sameSite: secureProd ? ('none' as const) : ('strict' as const),
-  // 防禦中間人竊聽：生產環境強制僅允許 HTTPS 加密傳輸（SameSite=None 亦強制要求 Secure）
   secure: secureProd,
-  // 作用域限制：設定為 '/' 代表全站所有 API 路徑發送請求時皆會自動附帶此 Cookie
   path: '/',
-  // 生命週期：與 DB token 到期同源（JWT_REFRESH_EXPIRES_IN），避免兩邊漂移
   maxAge,
 });
 
