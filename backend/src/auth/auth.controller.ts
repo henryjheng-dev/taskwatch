@@ -115,9 +115,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const raw: unknown = (req.cookies as Record<string, string>)[
-      REFRESH_COOKIE
-    ];
+    const raw: unknown = req.cookies[REFRESH_COOKIE];
     if (typeof raw !== 'string' || !raw) {
       throw new UnauthorizedException('Refresh token 不存在');
     }
