@@ -41,7 +41,7 @@ enum AuthProvider {
 model RefreshToken {
   id Int @id @default(autoincrement())
   userId Int @map("user_id") 
-  tokenHash String @unique @map("token") @db.VarChar(255)
+  tokenHash String @unique @map("token") @db.VarChar(64)
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
