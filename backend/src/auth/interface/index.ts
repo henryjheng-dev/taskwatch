@@ -1,7 +1,6 @@
 import type { Request } from 'express';
 import type { AuthUser } from '../strategies/jwt.strategy';
 
-/** 帶有 JWT 驗證後 user 資訊的 Request */
 export interface AuthRequest extends Request {
   user: AuthUser;
   cookies: {
@@ -10,7 +9,6 @@ export interface AuthRequest extends Request {
   };
 }
 
-/** 登入成功回傳格式 */
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
@@ -21,7 +19,6 @@ export interface LoginResponse {
   };
 }
 
-/** 內部 Token Pair（不對外暴露 user） */
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;

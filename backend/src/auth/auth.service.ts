@@ -18,7 +18,6 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import type { TokenPair, LoginResponse } from './interface';
 import { AuthProvider, Prisma } from '@/generated/prisma/client';
 
-/** bcrypt 雜湊強度 */
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
