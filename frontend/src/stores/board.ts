@@ -44,10 +44,9 @@ export const useBoardStore = defineStore('board', () => {
     }
   }
 
-  function updateBoardLocally(name?: string, bg?: string, archivedAt?: string | null) {
+  function updateBoardLocally(name?: string, archivedAt?: string | null) {
     if (!board.value) return;
     if (name) board.value.name = name;
-    if (bg) board.value.backgroundColor = bg;
     if (archivedAt !== undefined) board.value.archivedAt = archivedAt;
   }
 

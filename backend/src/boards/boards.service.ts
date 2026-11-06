@@ -46,7 +46,6 @@ export class BoardsService {
     return this.prisma.board.create({
       data: {
         name: dto.name,
-        backgroundColor: dto.backgroundColor,
         ownerId: userId,
         boardMembers: {
           create: { userId, role: BoardRole.ADMIN },
@@ -66,7 +65,6 @@ export class BoardsService {
       select: {
         id: true,
         name: true,
-        backgroundColor: true,
         ownerId: true,
         archivedAt: true,
         createdAt: true,
@@ -86,7 +84,6 @@ export class BoardsService {
       select: {
         id: true,
         name: true,
-        backgroundColor: true,
         ownerId: true,
         archivedAt: true,
         createdAt: true,

@@ -53,7 +53,6 @@ export interface Column {
 export interface Board {
   id: number
   name: string
-  backgroundColor: string
   ownerId: number
   archivedAt: string | null
   createdAt: string
@@ -66,7 +65,6 @@ export interface Board {
 export interface BoardListItem {
   id: number
   name: string
-  backgroundColor: string
   ownerId: number
   archivedAt: string | null
   createdAt: string
@@ -88,12 +86,10 @@ export interface BoardMember {
 
 export interface CreateBoardRequest {
   name: string
-  backgroundColor?: string
 }
 
 export interface UpdateBoardRequest {
   name?: string
-  backgroundColor?: string
 }
 
 export interface AddMemberRequest {
