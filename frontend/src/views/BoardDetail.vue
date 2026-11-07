@@ -50,6 +50,7 @@ const isGuest = computed(() => currentMember.value?.role === 'GUEST');
 const canEditBoard = computed(() => isOwner.value || isAdmin.value);
 const canCreateColumn = computed(() => !!currentMember.value && !isGuest.value);
 const canManageColumns = computed(() => isOwner.value || isAdmin.value);
+const canManageTasks = computed(() => !!currentMember.value && !isGuest.value);
 const canArchive = computed(() => isOwner.value || isAdmin.value);
 const canInvite = computed(() => isOwner.value || isAdmin.value);
 const canLeave = computed(() => !!currentMember.value && !isOwner.value && !isArchived.value);
@@ -331,6 +332,7 @@ function onColumnEscape(e: KeyboardEvent) {
             :board-id="boardId"
             :readonly="isArchived"
             :can-edit-column="!isArchived && canManageColumns"
+            :can-manage-tasks="!isArchived && canManageTasks"
             @add-task="handleAddTask"
             @select-task="handleSelectTask"
             @update-column="(id, name) => !isArchived && boardStore.updateColumn(boardId, id, name)"
@@ -409,7 +411,7 @@ function onColumnEscape(e: KeyboardEvent) {
       <TaskDetailModal
         :show="selectedTaskId !== null"
         :task="selectedTask"
-        :readonly="isArchived"
+        :readonly="isArchived || isGuest"
         @close="handleCloseTaskDetail"
         @updated="handleCloseTaskDetail"
         @deleted="handleCloseTaskDetail"

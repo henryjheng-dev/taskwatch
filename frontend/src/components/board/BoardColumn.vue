@@ -16,6 +16,7 @@ const props = defineProps<{
   boardId: number;
   readonly?: boolean;
   canEditColumn?: boolean;
+  canManageTasks?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -98,7 +99,7 @@ async function onTaskSortEnd(evt: DraggableEvent<Task>) {
         {{ column.tasks.length }}
       </span>
       <button
-        v-if="!readonly"
+        v-if="!readonly && canManageTasks"
         class="ml-auto flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
         @click="emit('addTask', column.id)"
       >
@@ -142,7 +143,7 @@ async function onTaskSortEnd(evt: DraggableEvent<Task>) {
       v-model="columnTasks"
       group="tasks"
       :animation="250"
-      :disabled="readonly"
+      :disabled="readonly || !canManageTasks"
       ghost-class="task-ghost"
       :data-column-id="column.id"
       draggable="[data-task-id]"
