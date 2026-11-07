@@ -4,21 +4,17 @@ import type { BoardMember, BoardRole } from '../../types';
 import { boardsApi } from '../../api/boards';
 import BaseModal from '../common/BaseModal.vue';
 import ConfirmDialog from '../common/ConfirmDialog.vue';
-import { ChevronDown, LogOut } from '@lucide/vue';
-import { useToastStore } from '../../stores/toast';
+import { ChevronDown } from '@lucide/vue';
 
 const props = defineProps<{
   show: boolean;
   boardId: number;
-  boardName: string;
   ownerId: number;
   currentUserId: number;
-  archived?: boolean;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  left: [];
 }>();
 
 const members = ref<BoardMember[]>([]);
@@ -26,8 +22,6 @@ const loading = ref(false);
 
 const showRemoveConfirm = ref(false);
 const targetMember = ref<BoardMember | null>(null);
-const showLeaveConfirm = ref(false);
-const leaving = ref(false);
 
 // ─── 角色下拉選單狀態 ──────────────────────────────────────────
 // activeMemberId：目前哪個成員的 dropdown 開啟（null = 全部關閉）
@@ -43,9 +37,6 @@ const dropdownStyle = ref<Record<string, string>>({});
 const currentMember = computed(() => members.value.find((m) => m.userId === props.currentUserId));
 const isOwner = computed(() => props.currentUserId === props.ownerId);
 const isAdmin = computed(() => currentMember.value?.role === 'ADMIN');
-const canLeave = computed(
-  () => props.currentUserId !== 0 && props.currentUserId !== props.ownerId && !props.archived,
-);
 
 // ─── 判斷是否可以編輯指定成員的角色 ──────────────────────────────
 // Owner：不可編輯自己，其他都可以
@@ -236,25 +227,10 @@ function handleRemoveCancel() {
   targetMember.value = null;
 }
 
-// ─── 自行離開看板 ──────────────────────────────────────────────
-async function handleLeaveConfirm() {
-  if (leaving.value) return;
-  leaving.value = true;
-  try {
-    await boardsApi.removeMember(props.boardId, props.currentUserId);
-    showLeaveConfirm.value = false;
-    emit('left');
-  } catch {
-    useToastStore().error('離開看板失敗');
-  } finally {
-    leaving.value = false;
-  }
-}
-
 // ─── Modal 關閉時一併清除 dropdown ─────────────────────────────
 // 如果 dropdown 開啟中，優先關閉 dropdown 而非 modal
 function handleClose() {
-  if (showRemoveConfirm.value || showLeaveConfirm.value) return;
+  if (showRemoveConfirm.value) return;
   if (activeMemberId.value !== null) {
     closeDropdown();
     return;
@@ -357,15 +333,6 @@ onMounted(async () => {
         </tbody>
       </table>
     </div>
-    <div v-if="canLeave" class="mt-4 pt-4 border-t border-black/8 flex justify-end">
-      <button
-        class="flex items-center gap-1.5 px-3 h-8 text-sm font-medium text-red-700 hover:text-red-800 hover:bg-red-50 rounded-sm transition-colors cursor-pointer"
-        @click="showLeaveConfirm = true"
-      >
-        <LogOut class="w-4 h-4" :stroke-width="1.5" />
-        離開看板
-      </button>
-    </div>
     <ConfirmDialog
       :show="showRemoveConfirm"
       title="移除成員"
@@ -373,14 +340,6 @@ onMounted(async () => {
       confirm-text="移除"
       @confirm="handleRemoveConfirm"
       @cancel="handleRemoveCancel"
-    />
-    <ConfirmDialog
-      :show="showLeaveConfirm"
-      title="離開看板"
-      :message="`確定要離開「${boardName}」嗎？離開後你將無法再存取此看板的內容。`"
-      confirm-text="離開"
-      @confirm="handleLeaveConfirm"
-      @cancel="showLeaveConfirm = false"
     />
   </BaseModal>
 </template>

@@ -15,7 +15,7 @@ import BaseDropdown from '../components/common/BaseDropdown.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import MemberListModal from '../components/board/MemberListModal.vue';
 import InviteMemberModal from '../components/board/InviteMemberModal.vue';
-import { Ellipsis, Trash2, Archive, Users, UserPlus } from '@lucide/vue';
+import { Ellipsis, Trash2, Archive, Users, UserPlus, LogOut } from '@lucide/vue';
 import { VueDraggable } from 'vue-draggable-plus';
 
 const route = useRoute();
@@ -33,13 +33,21 @@ const isColumnInputComposing = ref(false);
 const selectedTaskId = ref<number | null>(null);
 const showArchiveConfirm = ref(false);
 const showDeleteBoardConfirm = ref(false);
+const showLeaveConfirm = ref(false);
 const showMemberList = ref(false);
 const showInviteMember = ref(false);
+const leaving = ref(false);
 
 const authStore = useAuthStore();
 
 const isOwner = computed(() => boardStore.board?.ownerId === authStore.user?.id);
 const isArchived = computed(() => !!boardStore.board?.archivedAt);
+const currentMember = computed(() =>
+  boardStore.board?.boardMembers?.find((m) => m.userId === authStore.user?.id),
+);
+const isAdmin = computed(() => currentMember.value?.role === 'ADMIN');
+const canArchive = computed(() => isOwner.value || isAdmin.value);
+const canLeave = computed(() => !!currentMember.value && !isOwner.value && !isArchived.value);
 
 const columns = computed({
   get: () => boardStore.board?.columns ?? [],
@@ -116,10 +124,19 @@ async function handleDeleteBoard() {
   }
 }
 
-function handleLeftBoard() {
-  showMemberList.value = false;
-  toast.success('已離開看板');
-  router.push('/boards');
+async function handleLeaveConfirm() {
+  if (leaving.value || !authStore.user) return;
+  leaving.value = true;
+  try {
+    await boardsApi.removeMember(boardId.value, authStore.user.id);
+    toast.success('已離開看板');
+    router.push('/boards');
+  } catch {
+    toast.error('離開看板失敗');
+  } finally {
+    leaving.value = false;
+    showLeaveConfirm.value = false;
+  }
 }
 
 async function onColumnSortEnd() {
@@ -257,6 +274,7 @@ function onColumnEscape(e: KeyboardEvent) {
             </template>
             <template #dropdown="{ close }">
               <button
+                v-if="canArchive"
                 class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
                 @click="close(); showArchiveConfirm = true"
               >
@@ -270,6 +288,18 @@ function onColumnEscape(e: KeyboardEvent) {
               >
                 <Trash2 class="w-4 h-4" :stroke-width="1.5" />
                 刪除
+              </button>
+              <div
+                v-if="canLeave && (canArchive || isOwner)"
+                class="my-1 border-t border-black/8"
+              />
+              <button
+                v-if="canLeave"
+                class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
+                @click="close(); showLeaveConfirm = true"
+              >
+                <LogOut class="w-4 h-4" :stroke-width="1.5" />
+                離開看板
               </button>
             </template>
           </BaseDropdown>
@@ -349,15 +379,20 @@ function onColumnEscape(e: KeyboardEvent) {
         @confirm="handleDeleteBoard"
         @cancel="showDeleteBoardConfirm = false"
       />
+      <ConfirmDialog
+        :show="showLeaveConfirm"
+        title="離開看板"
+        :message="`確定要離開「${boardStore.board?.name ?? ''}」嗎？離開後你將無法再存取此看板的內容。`"
+        confirm-text="離開"
+        @confirm="handleLeaveConfirm"
+        @cancel="showLeaveConfirm = false"
+      />
       <MemberListModal
         :show="showMemberList"
         :board-id="boardId"
-        :board-name="boardStore.board?.name ?? ''"
         :owner-id="boardStore.board?.ownerId ?? 0"
         :current-user-id="authStore.user?.id ?? 0"
-        :archived="isArchived"
         @close="showMemberList = false"
-        @left="handleLeftBoard"
       />
       <InviteMemberModal
         :show="showInviteMember"
