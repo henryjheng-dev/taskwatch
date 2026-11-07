@@ -46,7 +46,10 @@ const currentMember = computed(() =>
   boardStore.board?.boardMembers?.find((m) => m.userId === authStore.user?.id),
 );
 const isAdmin = computed(() => currentMember.value?.role === 'ADMIN');
+const isGuest = computed(() => currentMember.value?.role === 'GUEST');
 const canEditBoard = computed(() => isOwner.value || isAdmin.value);
+const canCreateColumn = computed(() => !!currentMember.value && !isGuest.value);
+const canManageColumns = computed(() => isOwner.value || isAdmin.value);
 const canArchive = computed(() => isOwner.value || isAdmin.value);
 const canInvite = computed(() => isOwner.value || isAdmin.value);
 const canLeave = computed(() => !!currentMember.value && !isOwner.value && !isArchived.value);
@@ -314,7 +317,7 @@ function onColumnEscape(e: KeyboardEvent) {
           v-model="columns"
           group="columns"
           :animation="250"
-          :disabled="isArchived"
+          :disabled="isArchived || !canManageColumns"
           handle=".column-header"
           direction="horizontal"
           ghost-class="column-ghost"
@@ -327,6 +330,7 @@ function onColumnEscape(e: KeyboardEvent) {
             :column="col"
             :board-id="boardId"
             :readonly="isArchived"
+            :can-edit-column="!isArchived && canManageColumns"
             @add-task="handleAddTask"
             @select-task="handleSelectTask"
             @update-column="(id, name) => !isArchived && boardStore.updateColumn(boardId, id, name)"
@@ -334,7 +338,7 @@ function onColumnEscape(e: KeyboardEvent) {
           />
         </VueDraggable>
 
-        <div v-if="!isArchived" class="shrink-0 w-55 xl:w-57.5 ml-6">
+        <div v-if="!isArchived && canCreateColumn" class="shrink-0 w-55 xl:w-57.5 ml-6">
           <div class="flex items-center gap-2">
             <input
               v-model="newColumnName"

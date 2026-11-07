@@ -15,6 +15,7 @@ const props = defineProps<{
   column: Column;
   boardId: number;
   readonly?: boolean;
+  canEditColumn?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -74,7 +75,7 @@ async function onTaskSortEnd(evt: DraggableEvent<Task>) {
   <div class="shrink-0 w-55 xl:w-57.5 bg-gray-100 rounded-sm p-3 flex flex-col">
     <div class="flex items-center gap-2 mb-3 column-header">
       <InlineEdit
-        v-if="!readonly"
+        v-if="canEditColumn"
         :model-value="column.name"
         edit-class="min-w-0 max-w-32 h-7 px-1.5 py-0 text-sm font-medium text-gray-900 leading-7 bg-white border border-gray-300 rounded outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent box-border"
         @update:model-value="emit('updateColumn', column.id, $event)"
@@ -96,43 +97,41 @@ async function onTaskSortEnd(evt: DraggableEvent<Task>) {
       >
         {{ column.tasks.length }}
       </span>
-      <template v-if="!readonly">
-        <button
-          class="ml-auto flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
-          @click="emit('addTask', column.id)"
-        >
-          <Plus class="w-3.5 h-3.5" :stroke-width="1.5" />
-        </button>
-        <BaseDropdown>
-          <template #trigger="{ toggle, isOpen }">
-            <button
-              class="flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
-              :class="{ 'bg-black/5': isOpen }"
-              @click="toggle"
-            >
-              <Ellipsis class="w-3.5 h-3.5" :stroke-width="1.5" />
-            </button>
-          </template>
-          <template #dropdown="{ close }">
+      <button
+        v-if="!readonly"
+        class="ml-auto flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+        @click="emit('addTask', column.id)"
+      >
+        <Plus class="w-3.5 h-3.5" :stroke-width="1.5" />
+      </button>
+      <BaseDropdown v-if="canEditColumn">
+        <template #trigger="{ toggle, isOpen }">
           <button
-            class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
-            @click="close(); showDeleteConfirm = true"
+            class="flex items-center justify-center w-6 h-6 text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
+            :class="{ 'bg-black/5': isOpen }"
+            @click="toggle"
           >
-            <Trash2 class="w-4 h-4" :stroke-width="1.5" />
-            刪除
+            <Ellipsis class="w-3.5 h-3.5" :stroke-width="1.5" />
           </button>
-          </template>
-        </BaseDropdown>
-      </template>
+        </template>
+        <template #dropdown="{ close }">
+        <button
+          class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
+          @click="close(); showDeleteConfirm = true"
+        >
+          <Trash2 class="w-4 h-4" :stroke-width="1.5" />
+          刪除
+        </button>
+        </template>
+      </BaseDropdown>
     </div>
 
-    <template v-if="!readonly">
-      <ConfirmDialog
-        :show="showDeleteConfirm"
-        @confirm="handleDeleteColumn"
-        @cancel="showDeleteConfirm = false"
-      />
-    </template>
+    <ConfirmDialog
+      v-if="canEditColumn"
+      :show="showDeleteConfirm"
+      @confirm="handleDeleteColumn"
+      @cancel="showDeleteConfirm = false"
+    />
 
     <!--
       draggable="[data-task-id]": 只認卡片為可拖曳元素，排除 task-ghost 等非卡片元素。
