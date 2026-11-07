@@ -9,7 +9,6 @@ export interface Task {
   columnId: number
   title: string
   description: string | null
-  linkUrl: string | null
   priority: Priority
   dueDate: string | null
   position: number
@@ -107,7 +106,6 @@ export interface ReorderColumnsRequest {
 export interface CreateTaskRequest {
   title: string
   description?: string
-  linkUrl?: string
   priority?: Priority
   dueDate?: string
   position?: number
@@ -116,7 +114,6 @@ export interface CreateTaskRequest {
 export interface UpdateTaskRequest {
   title?: string
   description?: string | null
-  linkUrl?: string
   priority?: Priority
   dueDate?: string | null
   position?: number

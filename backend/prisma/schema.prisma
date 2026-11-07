@@ -110,7 +110,6 @@ model Task {
   columnId    Int       @map("column_id")
   title       String    @db.VarChar(255)
   description String?   @db.Text  
-  linkUrl     String?   @map("link_url") @db.VarChar(2048)
   priority    Priority  @default(MEDIUM)
   dueDate     DateTime? @map("due_date") @db.Date
   position    Int       @default(0)

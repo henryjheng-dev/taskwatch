@@ -49,7 +49,6 @@ export class TasksService {
         createdBy: userId,
         title: dto.title,
         description: dto.description,
-        linkUrl: dto.linkUrl,
         priority: dto.priority,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         position,

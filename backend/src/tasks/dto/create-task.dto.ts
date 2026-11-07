@@ -5,7 +5,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -24,14 +23,6 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  /**
-   * 任務連結，使用 @IsUrl() 限制格式，防止 javascript: 協議注入。
-   */
-  @IsOptional()
-  @IsUrl({}, { message: '連結格式不正確' })
-  @MaxLength(2048, { message: '連結長度不能超過 2048 個字元' })
-  linkUrl?: string;
 
   @IsOptional()
   @IsEnum(Priority, { message: '優先級必須是 LOW、MEDIUM 或 HIGH' })
