@@ -46,6 +46,7 @@ const currentMember = computed(() =>
   boardStore.board?.boardMembers?.find((m) => m.userId === authStore.user?.id),
 );
 const isAdmin = computed(() => currentMember.value?.role === 'ADMIN');
+const canEditBoard = computed(() => isOwner.value || isAdmin.value);
 const canArchive = computed(() => isOwner.value || isAdmin.value);
 const canInvite = computed(() => isOwner.value || isAdmin.value);
 const canLeave = computed(() => !!currentMember.value && !isOwner.value && !isArchived.value);
@@ -227,7 +228,7 @@ function onColumnEscape(e: KeyboardEvent) {
       <!-- Page Title & Toolbar -->
       <div class="flex items-center justify-between px-6 h-16 shrink-0">
         <InlineEdit
-          v-if="!isArchived"
+          v-if="!isArchived && canEditBoard"
           :model-value="boardStore.board?.name || ''"
           edit-class="text-2xl font-bold tracking-tight h-10 px-2 bg-white border border-gray-300 rounded outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent box-border"
           @update:model-value="handleUpdateBoardName"
