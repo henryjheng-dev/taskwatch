@@ -116,6 +116,12 @@ async function handleDeleteBoard() {
   }
 }
 
+function handleLeftBoard() {
+  showMemberList.value = false;
+  toast.success('已離開看板');
+  router.push('/boards');
+}
+
 async function onColumnSortEnd() {
   const ids = boardStore.board!.columns.map((c) => c.id);
   try {
@@ -346,9 +352,12 @@ function onColumnEscape(e: KeyboardEvent) {
       <MemberListModal
         :show="showMemberList"
         :board-id="boardId"
+        :board-name="boardStore.board?.name ?? ''"
         :owner-id="boardStore.board?.ownerId ?? 0"
         :current-user-id="authStore.user?.id ?? 0"
+        :archived="isArchived"
         @close="showMemberList = false"
+        @left="handleLeftBoard"
       />
       <InviteMemberModal
         :show="showInviteMember"
