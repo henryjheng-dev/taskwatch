@@ -1,21 +1,8 @@
 import type { User } from './auth'
 
-export interface Label {
-  id: number
-  boardId: number
-  name: string
-  color: string
-}
-
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
 
 export type BoardRole = 'ADMIN' | 'MEMBER' | 'GUEST'
-
-export interface TaskLabel {
-  taskId: number
-  labelId: number
-  label: Label
-}
 
 export interface TaskAssignee {
   taskId: number
@@ -36,7 +23,6 @@ export interface Task {
   createdBy: number
   createdAt: string
   updatedAt: string
-  taskLabels: TaskLabel[]
   taskAssignees: TaskAssignee[]
   creator?: { id: number; name: string }
 }
@@ -59,7 +45,6 @@ export interface Board {
   updatedAt: string
   columns: Column[]
   boardMembers: BoardMember[]
-  labels: Label[]
 }
 
 export interface BoardListItem {
@@ -148,14 +133,4 @@ export interface UpdateTaskRequest {
 export interface MoveTaskRequest {
   targetColumnId?: number
   position: number
-}
-
-export interface CreateLabelRequest {
-  name: string
-  color: string
-}
-
-export interface UpdateLabelRequest {
-  name?: string
-  color?: string
 }

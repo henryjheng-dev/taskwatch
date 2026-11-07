@@ -101,28 +101,4 @@ export class TasksController {
   ) {
     return this.tasksService.removeAssignee(id, targetUserId, req.user.id);
   }
-
-  // ──────────────────── Labels ─────────────────────────────────────────────────
-
-  /** POST /tasks/:id/labels → 201 貼上標籤 */
-  @Post('tasks/:id/labels')
-  @HttpCode(HttpStatus.CREATED)
-  attachLabel(
-    @Req() req: AuthRequest,
-    @Param('id', ParseIntPipe) id: number,
-    @Body('labelId', ParseIntPipe) labelId: number,
-  ) {
-    return this.tasksService.attachLabel(id, labelId, req.user.id);
-  }
-
-  /** DELETE /tasks/:id/labels/:labelId → 204 移除標籤 */
-  @Delete('tasks/:id/labels/:labelId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  detachLabel(
-    @Req() req: AuthRequest,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('labelId', ParseIntPipe) labelId: number,
-  ) {
-    return this.tasksService.detachLabel(id, labelId, req.user.id);
-  }
 }

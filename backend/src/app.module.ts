@@ -9,7 +9,6 @@ import { AuthModule } from './auth/auth.module';
 import { BoardsModule } from './boards/boards.module';
 import { ColumnsModule } from './columns/columns.module';
 import { TasksModule } from './tasks/tasks.module';
-import { LabelsModule } from './labels/labels.module';
 import { RedisModule } from './redis/redis.module';
 import { REDIS_CLIENT } from './redis/redis.constants';
 import { AiModule } from './ai/ai.module';
@@ -52,7 +51,6 @@ import type { Redis } from 'ioredis';
     BoardsModule,
     ColumnsModule,
     TasksModule,
-    LabelsModule,
     RedisModule,
     AiModule,
   ],

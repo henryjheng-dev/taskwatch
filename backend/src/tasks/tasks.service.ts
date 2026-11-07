@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardsService } from '../boards/boards.service';
 import { ColumnsService } from '../columns/columns.service';
-import { LabelsService } from '../labels/labels.service';
 import { AuthorizationService } from '../common/authz/authorization.service';
 import { Permission } from '../common/authz/permission.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -11,7 +10,6 @@ import { MoveTaskDto } from './dto/move-task.dto';
 
 /** 任務詳情 select：統一 include 邏輯，避免各方法重複寫 */
 const TASK_DETAIL_INCLUDE = {
-  taskLabels: { include: { label: true } },
   taskAssignees: {
     include: {
       user: { select: { id: true, name: true, email: true } },
@@ -26,7 +24,6 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly boardsService: BoardsService,
     private readonly columnsService: ColumnsService,
-    private readonly labelsService: LabelsService,
     private readonly authz: AuthorizationService,
   ) {}
 
@@ -197,48 +194,6 @@ export class TasksService {
 
     await this.prisma.taskAssignee.delete({
       where: { taskId_userId: { taskId, userId: targetUserId } },
-    });
-  }
-
-  // ──────────────────────────── Labels ───────────────────────────────────
-
-  /** 為任務貼上標籤，需要 UPDATE_TASK_LABELS 權限。 */
-  async attachLabel(taskId: number, labelId: number, userId: number) {
-    const task = await this.getTaskWithBoard(taskId);
-    const boardId = task.column.boardId;
-    await this.authz.requirePermission(
-      userId,
-      boardId,
-      Permission.UPDATE_TASK_LABELS,
-    );
-    await this.boardsService.assertNotArchived(boardId);
-
-    // 確認 label 屬於同一看板
-    await this.labelsService.assertLabelBelongsToBoard(
-      labelId,
-      task.column.boardId,
-    );
-
-    return this.prisma.taskLabel.upsert({
-      where: { taskId_labelId: { taskId, labelId } },
-      create: { taskId, labelId },
-      update: {},
-    });
-  }
-
-  /** 移除任務標籤，需要 UPDATE_TASK_LABELS 權限。 */
-  async detachLabel(taskId: number, labelId: number, userId: number) {
-    const task = await this.getTaskWithBoard(taskId);
-    const boardId = task.column.boardId;
-    await this.authz.requirePermission(
-      userId,
-      boardId,
-      Permission.UPDATE_TASK_LABELS,
-    );
-    await this.boardsService.assertNotArchived(boardId);
-
-    await this.prisma.taskLabel.delete({
-      where: { taskId_labelId: { taskId, labelId } },
     });
   }
 

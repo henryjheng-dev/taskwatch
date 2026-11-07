@@ -17,7 +17,6 @@ const BOARD_DETAIL_INCLUDE = {
       tasks: {
         orderBy: { position: 'asc' },
         include: {
-          taskLabels: { include: { label: true } },
           taskAssignees: {
             include: {
               user: { select: { id: true, name: true, email: true } },
@@ -30,7 +29,6 @@ const BOARD_DETAIL_INCLUDE = {
   boardMembers: {
     include: { user: { select: { id: true, name: true, email: true } } },
   },
-  labels: true,
 } as const;
 
 @Injectable()

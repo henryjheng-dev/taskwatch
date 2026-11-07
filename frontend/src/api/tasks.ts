@@ -5,7 +5,6 @@ import type {
   UpdateTaskRequest,
   MoveTaskRequest,
   TaskAssignee,
-  TaskLabel,
 } from '../types'
 
 export const tasksApi = {
@@ -35,13 +34,5 @@ export const tasksApi = {
 
   removeAssignee(taskId: number, userId: number) {
     return api.delete(`/tasks/${taskId}/assignees/${userId}`)
-  },
-
-  attachLabel(taskId: number, labelId: number) {
-    return api.post<TaskLabel>(`/tasks/${taskId}/labels`, { labelId })
-  },
-
-  detachLabel(taskId: number, labelId: number) {
-    return api.delete(`/tasks/${taskId}/labels/${labelId}`)
   },
 }

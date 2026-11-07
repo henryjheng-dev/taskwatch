@@ -33,8 +33,4 @@ export enum Permission {
   MOVE_TASK = 'MOVE_TASK',
   ASSIGN_TASK = 'ASSIGN_TASK',
   REMOVE_ASSIGNEE = 'REMOVE_ASSIGNEE',
-  UPDATE_TASK_LABELS = 'UPDATE_TASK_LABELS',
-
-  // ── Label 標籤（看板層級設定）──
-  MANAGE_LABELS = 'MANAGE_LABELS',
 }

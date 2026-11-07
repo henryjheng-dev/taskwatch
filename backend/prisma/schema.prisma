@@ -63,7 +63,6 @@ model Board{
   owner User @relation(fields: [ownerId],references: [id],onDelete: Cascade)
   columns Column[]
   boardMembers BoardMember[]  
-  labels Label[]
 
   @@index([ownerId])
   @@map("boards")
@@ -122,7 +121,6 @@ model Task {
 
   creator User @relation(fields: [createdBy],references: [id])
   column Column @relation(fields: [columnId],references: [id],onDelete: Cascade)
-  taskLabels TaskLabel[]
   taskAssignees TaskAssignee[]
 
   @@index([columnId, position])
@@ -135,30 +133,6 @@ enum Priority {
  LOW    @map("low")
  MEDIUM @map("medium")
  HIGH   @map("high")
-}
-
-model Label{
-  id Int @id @default(autoincrement())
-  boardId Int @map("board_id")
-  name String @db.VarChar(50)
-  color String @db.VarChar(50)
-
-  board Board @relation(fields: [boardId],references: [id],onDelete: Cascade)
-  taskLabels TaskLabel[]
-
-  @@index([boardId])
-  @@map("labels")
-}
-
-model TaskLabel{
-  taskId Int @map("task_id")
-  labelId Int @map("label_id")
-
-    task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
-
-  @@id([taskId,labelId])
-  @@map("task_labels")
 }
 
 model TaskAssignee{
