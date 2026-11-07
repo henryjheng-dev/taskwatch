@@ -66,7 +66,7 @@ export class BoardsService {
   }
 
   async findArchived(userId: number) {
-    return this.prisma.board.findMany({
+    const boards = await this.prisma.board.findMany({
       where: {
         boardMembers: { some: { userId } },
         archivedAt: { not: null },
@@ -80,8 +80,17 @@ export class BoardsService {
         createdAt: true,
         updatedAt: true,
         _count: { select: { columns: true, boardMembers: true } },
+        boardMembers: {
+          where: { userId },
+          select: { role: true },
+        },
       },
     });
+
+    return boards.map(({ boardMembers, ...board }) => ({
+      ...board,
+      currentUserRole: boardMembers[0]?.role ?? null,
+    }));
   }
 
   /**

@@ -140,6 +140,7 @@ async function handleAiGenerate(prompt: string) {
             <div class="flex items-center justify-between">
               <h3 class="text-sm font-medium text-gray-1000">{{ board.name }}</h3>
               <button
+                v-if="board.currentUserRole === 'ADMIN'"
                 class="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-sm hover:bg-gray-50 hover:border-gray-1000 hover:text-gray-1000 cursor-pointer transition-colors"
                 @click.stop="
                   restoreTargetId = board.id;

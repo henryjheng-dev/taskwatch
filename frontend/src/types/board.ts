@@ -45,6 +45,7 @@ export interface BoardListItem {
   archivedAt: string | null
   createdAt: string
   updatedAt: string
+  currentUserRole?: BoardRole | null
   _count: {
     columns: number
     boardMembers: number
