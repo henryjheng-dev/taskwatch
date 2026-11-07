@@ -10,11 +10,6 @@ import { MoveTaskDto } from './dto/move-task.dto';
 
 /** 任務詳情 select：統一 include 邏輯，避免各方法重複寫 */
 const TASK_DETAIL_INCLUDE = {
-  taskAssignees: {
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-    },
-  },
   creator: { select: { id: true, name: true } },
 } as const;
 
@@ -147,53 +142,6 @@ export class TasksService {
     return this.prisma.task.update({
       where: { id: taskId },
       data: { columnId: targetColumnId, position: dto.position },
-    });
-  }
-
-  // ────────────────────────── Assignees ──────────────────────────────────
-
-  /** 指派成員到任務，需要 ASSIGN_TASK 權限。 */
-  async addAssignee(taskId: number, targetUserId: number, requesterId: number) {
-    const task = await this.getTaskWithBoard(taskId);
-    const boardId = task.column.boardId;
-
-    await this.authz.requirePermission(
-      requesterId,
-      boardId,
-      Permission.ASSIGN_TASK,
-    );
-    await this.boardsService.assertNotArchived(boardId);
-
-    // 確認被指派者也是看板成員
-    await this.authz.requireMember(boardId, targetUserId);
-
-    return this.prisma.taskAssignee.upsert({
-      where: { taskId_userId: { taskId, userId: targetUserId } },
-      create: { taskId, userId: targetUserId },
-      update: {},
-    });
-  }
-
-  /** 移除指派：REMOVE_ASSIGNEE 權限者 或 被指派者本人（關係型規則）。 */
-  async removeAssignee(
-    taskId: number,
-    targetUserId: number,
-    requesterId: number,
-  ) {
-    const task = await this.getTaskWithBoard(taskId);
-    const boardId = task.column.boardId;
-    const member = await this.authz.requireMember(boardId, requesterId);
-    await this.boardsService.assertNotArchived(boardId);
-
-    this.authz.requireSelfOrAdmin(
-      targetUserId,
-      member,
-      Permission.REMOVE_ASSIGNEE,
-      '只有 ADMIN 或本人才能移除指派',
-    );
-
-    await this.prisma.taskAssignee.delete({
-      where: { taskId_userId: { taskId, userId: targetUserId } },
     });
   }
 

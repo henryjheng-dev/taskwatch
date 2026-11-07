@@ -4,13 +4,6 @@ export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
 
 export type BoardRole = 'ADMIN' | 'MEMBER' | 'GUEST'
 
-export interface TaskAssignee {
-  taskId: number
-  userId: number
-  assignedAt: string
-  user: User
-}
-
 export interface Task {
   id: number
   columnId: number
@@ -23,7 +16,6 @@ export interface Task {
   createdBy: number
   createdAt: string
   updatedAt: string
-  taskAssignees: TaskAssignee[]
   creator?: { id: number; name: string }
 }
 

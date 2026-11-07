@@ -4,7 +4,6 @@ import type {
   CreateTaskRequest,
   UpdateTaskRequest,
   MoveTaskRequest,
-  TaskAssignee,
 } from '../types'
 
 export const tasksApi = {
@@ -26,13 +25,5 @@ export const tasksApi = {
 
   move(id: number, data: MoveTaskRequest) {
     return api.patch<Task>(`/tasks/${id}/move`, data)
-  },
-
-  addAssignee(taskId: number, userId: number) {
-    return api.post<TaskAssignee>(`/tasks/${taskId}/assignees`, { userId })
-  },
-
-  removeAssignee(taskId: number, userId: number) {
-    return api.delete(`/tasks/${taskId}/assignees/${userId}`)
   },
 }

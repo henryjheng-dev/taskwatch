@@ -16,13 +16,6 @@ const BOARD_DETAIL_INCLUDE = {
     include: {
       tasks: {
         orderBy: { position: 'asc' },
-        include: {
-          taskAssignees: {
-            include: {
-              user: { select: { id: true, name: true, email: true } },
-            },
-          },
-        },
       },
     },
   },

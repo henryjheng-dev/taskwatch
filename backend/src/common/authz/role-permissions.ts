@@ -20,7 +20,6 @@ export const ROLE_PERMISSIONS: Record<BoardRole, ReadonlySet<Permission>> = {
     Permission.CREATE_TASK,
     Permission.UPDATE_TASK,
     Permission.MOVE_TASK,
-    Permission.ASSIGN_TASK,
   ]),
 
   /** 管理員：全權限（矩陣內的所有動作） */

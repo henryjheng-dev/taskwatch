@@ -18,7 +18,6 @@ import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
-import { AddAssigneeDto } from './dto/add-assignee.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -76,29 +75,5 @@ export class TasksController {
     @Body() dto: MoveTaskDto,
   ) {
     return this.tasksService.move(id, req.user.id, dto);
-  }
-
-  // ──────────────────── Assignees ──────────────────────────────────────────────
-
-  /** POST /tasks/:id/assignees → 201 指派成員 */
-  @Post('tasks/:id/assignees')
-  @HttpCode(HttpStatus.CREATED)
-  addAssignee(
-    @Req() req: AuthRequest,
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AddAssigneeDto,
-  ) {
-    return this.tasksService.addAssignee(id, dto.userId, req.user.id);
-  }
-
-  /** DELETE /tasks/:id/assignees/:userId → 204 移除指派 */
-  @Delete('tasks/:id/assignees/:userId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeAssignee(
-    @Req() req: AuthRequest,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) targetUserId: number,
-  ) {
-    return this.tasksService.removeAssignee(id, targetUserId, req.user.id);
   }
 }
