@@ -47,6 +47,7 @@ const currentMember = computed(() =>
 );
 const isAdmin = computed(() => currentMember.value?.role === 'ADMIN');
 const canArchive = computed(() => isOwner.value || isAdmin.value);
+const canInvite = computed(() => isOwner.value || isAdmin.value);
 const canLeave = computed(() => !!currentMember.value && !isOwner.value && !isArchived.value);
 
 const columns = computed({
@@ -255,7 +256,7 @@ function onColumnEscape(e: KeyboardEvent) {
             <span>成員 {{ boardStore.board?.boardMembers?.length ?? 0 }}</span>
           </button>
           <button
-            v-if="!isArchived"
+            v-if="!isArchived && canInvite"
             class="flex items-center gap-1 px-2 h-8 text-sm text-gray-900 hover:bg-black/5 rounded-sm transition-colors"
             @click="showInviteMember = true"
           >
