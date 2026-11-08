@@ -30,11 +30,6 @@ const router = createRouter({
       component: () => import('../views/BoardDetail.vue'),
       meta: { requiresAuth: true },
     },
-    {
-      path: '/403',
-      name: 'Forbidden',
-      component: () => import('../views/Forbidden.vue'),
-    },
   ],
 });
 
