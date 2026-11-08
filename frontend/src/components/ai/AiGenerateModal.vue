@@ -7,6 +7,7 @@ const props = defineProps<{
   show: boolean;
   remaining?: number;
   loading?: boolean;
+  error?: string;
 }>();
 
 const emit = defineEmits<{
@@ -50,6 +51,10 @@ function handleClose() {
           <span>{{ prompt.length }} / {{ MAX_LENGTH }}</span>
         </div>
       </div>
+
+      <p v-if="error" class="text-xs font-light leading-relaxed text-red-800">
+        {{ error }}
+      </p>
 
       <div class="flex justify-end gap-3 pt-2">
         <BaseButton variant="tertiary" @click="handleClose">Cancel</BaseButton>

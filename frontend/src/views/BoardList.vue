@@ -20,18 +20,34 @@ const boards = ref<BoardListItem[]>([]);
 const loading = ref(true);
 const showCreateModal = ref(false);
 const showAiModal = ref(false);
-const generating = ref(false);
 const showArchived = ref(false);
 const showRestoreConfirm = ref(false);
 const restoreTargetId = ref(0);
 
 const toast = useToastStore();
 
-const { usage, fetchUsage, generate } = useAiGenerate();
+const {
+  usage,
+  loading: generating,
+  error: aiError,
+  fetchUsage,
+  generate,
+  clearError,
+} = useAiGenerate();
 
 function handleBoardCreated(boardId: number) {
   showCreateModal.value = false;
   router.push(`/boards/${boardId}`);
+}
+
+function openAiModal() {
+  clearError();
+  showAiModal.value = true;
+}
+
+function handleAiClose() {
+  showAiModal.value = false;
+  clearError();
 }
 
 onMounted(async () => {
@@ -86,7 +102,7 @@ async function handleAiGenerate(prompt: string) {
       <div class="flex items-center justify-between mb-8">
         <h2 class="text-2xl font-bold tracking-tight text-gray-1000">My Boards</h2>
         <div class="flex items-center gap-3">
-          <AiGenerateButton :remaining="usage?.remaining" @click="showAiModal = true" />
+          <AiGenerateButton :remaining="usage?.remaining" @click="openAiModal" />
           <BaseButton variant="primary" size="sm" @click="showCreateModal = true">
             New Board
           </BaseButton>
@@ -177,7 +193,8 @@ async function handleAiGenerate(prompt: string) {
       :show="showAiModal"
       :remaining="usage?.remaining"
       :loading="generating"
-      @close="showAiModal = false"
+      :error="aiError"
+      @close="handleAiClose"
       @generate="handleAiGenerate"
     />
   </div>

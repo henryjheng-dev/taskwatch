@@ -35,5 +35,9 @@ export function useAiGenerate() {
     }
   }
 
-  return { usage, loading, error, fetchUsage, generate }
+  function clearError() {
+    error.value = ''
+  }
+
+  return { usage, loading, error, fetchUsage, generate, clearError }
 }
