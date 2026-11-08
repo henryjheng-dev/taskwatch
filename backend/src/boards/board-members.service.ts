@@ -1,11 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardRole } from '@/generated/prisma/client';
+import { BoardRole, Prisma } from '@/generated/prisma/client';
 import { AuthorizationService } from '../common/authz/authorization.service';
 import { Permission } from '../common/authz/permission.enum';
 import { BoardsService } from './boards.service';
@@ -96,16 +97,23 @@ export class BoardMembersService {
     }
     if (!targetUser) throw new NotFoundException('找不到此使用者');
 
-    // upsert：若已是成員只更新 role，避免 unique constraint 衝突
-    return this.prisma.boardMember.upsert({
-      where: { boardId_userId: { boardId, userId: targetUser.id } },
-      create: {
-        boardId,
-        userId: targetUser.id,
-        role: dto.role ?? BoardRole.MEMBER,
-      },
-      update: { role: dto.role ?? BoardRole.MEMBER },
-    });
+    try {
+      return await this.prisma.boardMember.create({
+        data: {
+          boardId,
+          userId: targetUser.id,
+          role: dto.role ?? BoardRole.MEMBER,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('此使用者已是看板成員');
+      }
+      throw error;
+    }
   }
 
   async updateMemberRole(
