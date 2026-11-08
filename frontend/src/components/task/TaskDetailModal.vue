@@ -16,6 +16,7 @@ const props = defineProps<{
   show: boolean;
   task: Task | null;
   readonly?: boolean;
+  canDelete?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -217,11 +218,17 @@ async function confirmDelete() {
         }}
       </div>
 
-      <div v-if="!readonly && !editing" class="flex justify-between pt-2">
-        <BaseButton variant="error" size="sm" :loading="deleting" @click="handleDelete">
+      <div v-if="!readonly && !editing" class="flex pt-2">
+        <BaseButton
+          v-if="canDelete"
+          variant="error"
+          size="sm"
+          :loading="deleting"
+          @click="handleDelete"
+        >
           Delete
         </BaseButton>
-        <div class="flex gap-3">
+        <div class="flex gap-3 ml-auto">
           <BaseButton variant="tertiary" @click="handleCloseAttempt">Cancel</BaseButton>
           <BaseButton variant="primary" :loading="saving" @click="handleSave">Save</BaseButton>
         </div>

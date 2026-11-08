@@ -71,6 +71,11 @@ const selectedTask = computed(() => {
   return null;
 });
 
+const canDeleteSelectedTask = computed(() => {
+  if (!selectedTask.value || !authStore.user) return false;
+  return isAdmin.value || selectedTask.value.createdBy === authStore.user.id;
+});
+
 function handleSelectTask(taskId: number) {
   selectedTaskId.value = taskId;
 }
@@ -412,6 +417,7 @@ function onColumnEscape(e: KeyboardEvent) {
         :show="selectedTaskId !== null"
         :task="selectedTask"
         :readonly="isArchived || isGuest"
+        :can-delete="canDeleteSelectedTask"
         @close="handleCloseTaskDetail"
         @updated="handleCloseTaskDetail"
         @deleted="handleCloseTaskDetail"
