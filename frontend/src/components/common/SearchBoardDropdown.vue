@@ -133,7 +133,7 @@ onUnmounted(() => {
         <!-- Recent Boards -->
         <div v-if="!isSearching" class="py-2 h-48 overflow-y-auto">
           <p class="px-4 py-1 text-[13px] font-light leading-relaxed text-gray-600">
-            最近開啟的面板
+            最近更新的面板
           </p>
           <button
             v-for="(board, i) in recentBoards"
@@ -151,7 +151,7 @@ onUnmounted(() => {
             <span class="truncate">{{ board.name }}</span>
           </button>
           <p v-if="recentBoards.length === 0" class="px-4 py-3 text-xs font-light leading-relaxed text-slate-500 text-center">
-            尚無最近開啟的看板
+            尚無最近更新的看板
           </p>
         </div>
 

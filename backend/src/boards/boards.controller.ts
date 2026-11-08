@@ -55,7 +55,7 @@ export class BoardsController {
     return this.boardsService.findArchived(req.user.id);
   }
 
-  /** GET /boards/recent → 200 最近開啟的看板（前 3 筆） */
+  /** GET /boards/recent → 200 最近更新的看板（前 3 筆） */
   @Get('recent')
   findRecent(@Req() req: AuthRequest) {
     return this.boardsService.findRecent(req.user.id);
