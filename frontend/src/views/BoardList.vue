@@ -59,7 +59,11 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-  boardStore.fetchArchivedBoards();
+  try {
+    await boardStore.fetchArchivedBoards();
+  } catch {
+    toast.error('載入封存看板失敗');
+  }
   fetchUsage();
 });
 
