@@ -15,7 +15,6 @@ export interface Task {
   createdBy: number
   createdAt: string
   updatedAt: string
-  creator?: { id: number; name: string }
 }
 
 export interface Column {

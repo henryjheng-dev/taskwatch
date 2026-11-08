@@ -8,11 +8,6 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 
-/** 任務詳情 select：統一 include 邏輯，避免各方法重複寫 */
-const TASK_DETAIL_INCLUDE = {
-  creator: { select: { id: true, name: true } },
-} as const;
-
 @Injectable()
 export class TasksService {
   constructor(
@@ -53,7 +48,6 @@ export class TasksService {
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         position,
       },
-      include: TASK_DETAIL_INCLUDE,
     });
   }
 
@@ -75,7 +69,6 @@ export class TasksService {
               : new Date(dto.dueDate)
             : undefined,
       },
-      include: TASK_DETAIL_INCLUDE,
     });
   }
 
