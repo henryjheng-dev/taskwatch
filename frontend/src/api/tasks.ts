@@ -11,10 +11,6 @@ export const tasksApi = {
     return api.post<Task>(`/boards/${boardId}/columns/${columnId}/tasks`, data)
   },
 
-  get(id: number) {
-    return api.get<Task>(`/tasks/${id}`)
-  },
-
   update(id: number, data: UpdateTaskRequest) {
     return api.patch<Task>(`/tasks/${id}`, data)
   },

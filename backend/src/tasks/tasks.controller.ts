@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -39,12 +38,6 @@ export class TasksController {
   }
 
   // ──────────────────── 頂層路由（Task ID 即可定位資源）────────────────────────────
-
-  /** GET /tasks/:id → 200 任務詳情（含 labels、assignees） */
-  @Get('tasks/:id')
-  findOne(@Req() req: AuthRequest, @Param('id', ParseIntPipe) id: number) {
-    return this.tasksService.findOne(id, req.user.id);
-  }
 
   /** PATCH /tasks/:id → 200 更新任務內容 */
   @Patch('tasks/:id')

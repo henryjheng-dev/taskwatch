@@ -57,28 +57,6 @@ export class TasksService {
     });
   }
 
-  /**
-   * 取得單一任務詳情。
-   * 先確認任務存在，再透過 columnId → boardId 確認使用者有讀取權限。
-   */
-  async findOne(taskId: number, userId: number) {
-    const task = await this.prisma.task.findUnique({
-      where: { id: taskId },
-      include: {
-        ...TASK_DETAIL_INCLUDE,
-        column: { select: { boardId: true } },
-      },
-    });
-    if (!task) throw new NotFoundException('任務不存在');
-
-    await this.authz.requirePermission(
-      userId,
-      task.column.boardId,
-      Permission.VIEW_BOARD,
-    );
-    return task;
-  }
-
   /** 更新任務內容，需要 UPDATE_TASK 權限。 */
   async update(taskId: number, userId: number, dto: UpdateTaskDto) {
     const task = await this.getTaskWithBoard(taskId);
