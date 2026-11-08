@@ -43,18 +43,17 @@ const { query, results, loading, reset } = useSearch<UserSearchResult>(
   { debounceMs: 200 },
 );
 
-const suppressStatusClear = ref(false);
+// 搜尋框 ref：邀請成功後重新聚焦，方便連續邀請
+const inputRef = ref<HTMLInputElement | null>(null);
 // 下拉選單容器 ref，限縮 scrollIntoView 搜尋範圍，避免與全域其他元件撞名
 const listRef = ref<HTMLElement | null>(null);
 
-watch(query, () => {
-  if (suppressStatusClear.value) {
-    suppressStatusClear.value = false;
-    return;
-  }
+// 只有使用者手動編輯搜尋字串時，才取消目前的選取。
+// 程式呼叫 selectUser() 設定 query 不會觸發 input 事件，因此不會誤清選取。
+function handleQueryInput() {
   selectedUser.value = null;
   if (statusMessage.value) statusMessage.value = '';
-});
+}
 
 // ─── 鍵盤導覽選中的索引（-1 = 無選中）────────────────────────────
 const selectedIndex = ref(-1);
@@ -87,8 +86,7 @@ function handleKeydown(e: KeyboardEvent) {
       break;
     case 'ArrowUp':
       e.preventDefault();
-      selectedIndex.value =
-        (selectedIndex.value - 1 + results.value.length) % results.value.length;
+      selectedIndex.value = (selectedIndex.value - 1 + results.value.length) % results.value.length;
       scrollSelectedIntoView();
       break;
     case 'Enter':
@@ -100,6 +98,8 @@ function handleKeydown(e: KeyboardEvent) {
     case 'Escape':
       e.preventDefault();
       e.stopPropagation();
+      selectedUser.value = null;
+      if (statusMessage.value) statusMessage.value = '';
       reset();
       break;
   }
@@ -118,9 +118,9 @@ function selectUser(user: UserSearchResult) {
 
 async function invite(user: UserSearchResult) {
   inviting.value = true;
+  let succeeded = false;
   try {
     await boardsApi.addMember(props.boardId, { query: user.email });
-    suppressStatusClear.value = true;
     query.value = '';
     statusType.value = 'success';
     statusMessage.value = '已添加成功';
@@ -128,11 +128,15 @@ async function invite(user: UserSearchResult) {
     selectedIndex.value = -1;
     selectedUser.value = null;
     emit('invited');
+    succeeded = true;
   } catch {
     statusType.value = 'error';
     statusMessage.value = '添加失敗';
   } finally {
     inviting.value = false;
+    // 成功後把焦點放回搜尋框，讓使用者可以直接輸入下一個人
+    // nextTick：等 :disabled 的 DOM 更新完成後再 focus，否則會聚焦失敗
+    if (succeeded) nextTick(() => inputRef.value?.focus());
   }
 }
 
@@ -156,10 +160,13 @@ function handleClose() {
       <div class="flex gap-2">
         <div class="relative flex-1">
           <input
+            ref="inputRef"
             v-model="query"
             type="text"
             placeholder="搜尋名稱或 Email…"
-            class="w-full border border-black/8 rounded-md px-3 py-2 text-sm outline-none focus:border-black/20 transition-colors"
+            class="w-full border border-black/8 rounded-md px-3 py-2 text-sm outline-none focus:border-black/20 transition-colors disabled:opacity-50"
+            :disabled="inviting"
+            @input="handleQueryInput"
             @compositionstart="onCompositionStart"
             @compositionend="onCompositionEnd"
           />
@@ -167,29 +174,33 @@ function handleClose() {
             v-if="query.trim() && !selectedUser"
             class="absolute top-full left-0 right-0 bg-white border border-black/8 rounded-md shadow-lg z-10 overflow-hidden"
           >
-            <div
-              ref="listRef"
-              class="h-48 overflow-y-auto"
-              @mouseenter="selectedIndex = -1"
-            >
-            <div v-if="loading" class="flex h-full items-center justify-center text-sm text-gray-600">搜尋中…</div>
-            <div v-else-if="results.length === 0" class="flex h-full items-center justify-center text-sm text-gray-500">
-              無符合的使用者
-            </div>
-            <button
-              v-for="(user, i) in results"
-              :key="user.id"
-              :data-selected="selectedIndex === i || undefined"
-              :disabled="inviting"
-              :class="[
-                'w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 disabled:opacity-50',
-                selectedIndex === i && 'bg-gray-100',
-              ]"
-              @click="selectUser(user)"
-            >
-              <span class="font-medium">{{ user.name }}</span>
-              <span class="ml-2 text-gray-700">{{ user.email }}</span>
-            </button>
+            <div ref="listRef" class="h-48 overflow-y-auto" @mouseenter="selectedIndex = -1">
+              <div
+                v-if="loading"
+                class="flex h-full items-center justify-center text-sm text-gray-600"
+              >
+                搜尋中…
+              </div>
+              <div
+                v-else-if="results.length === 0"
+                class="flex h-full items-center justify-center text-sm text-gray-500"
+              >
+                無符合的使用者
+              </div>
+              <button
+                v-for="(user, i) in results"
+                :key="user.id"
+                :data-selected="selectedIndex === i || undefined"
+                :disabled="inviting"
+                :class="[
+                  'w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 disabled:opacity-50',
+                  selectedIndex === i && 'bg-gray-100',
+                ]"
+                @click="selectUser(user)"
+              >
+                <span class="font-medium">{{ user.name }}</span>
+                <span class="ml-2 text-gray-700">{{ user.email }}</span>
+              </button>
             </div>
           </div>
         </div>

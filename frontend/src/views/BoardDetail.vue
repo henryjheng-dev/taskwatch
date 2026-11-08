@@ -406,7 +406,7 @@ function onColumnEscape(e: KeyboardEvent) {
         :show="showInviteMember"
         :board-id="boardId"
         @close="showInviteMember = false"
-        @invited="showInviteMember = false; boardStore.fetchBoard(boardId)"
+        @invited="boardStore.fetchBoard(boardId)"
       />
       <TaskDetailModal
         :show="selectedTaskId !== null"
