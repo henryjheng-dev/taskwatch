@@ -18,6 +18,7 @@ const router = useRouter();
 const boardStore = useBoardStore();
 const boards = ref<BoardListItem[]>([]);
 const loading = ref(true);
+const loadError = ref(false);
 const showCreateModal = ref(false);
 const showAiModal = ref(false);
 const showArchived = ref(false);
@@ -50,15 +51,22 @@ function handleAiClose() {
   clearError();
 }
 
-onMounted(async () => {
+async function loadBoards() {
+  loading.value = true;
+  loadError.value = false;
   try {
     const res = await boardsApi.list();
     boards.value = res.data;
   } catch (error) {
     console.error('抓取看板失敗:', error);
+    loadError.value = true;
   } finally {
     loading.value = false;
   }
+}
+
+onMounted(async () => {
+  await loadBoards();
   try {
     await boardStore.fetchArchivedBoards();
   } catch {
@@ -114,6 +122,13 @@ async function handleAiGenerate(prompt: string) {
       </div>
 
       <div v-if="loading" class="text-xs font-light leading-relaxed text-slate-500">Loading...</div>
+
+      <div v-else-if="loadError" class="flex flex-col items-start gap-3">
+        <p class="text-xs font-light leading-relaxed text-slate-500">
+          載入看板失敗，請稍後再試。
+        </p>
+        <BaseButton variant="secondary" size="sm" @click="loadBoards">重試</BaseButton>
+      </div>
 
       <div
         v-else-if="boards.length === 0"
