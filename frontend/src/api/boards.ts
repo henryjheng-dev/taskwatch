@@ -81,10 +81,6 @@ export const boardsApi = {
 };
 
 export const columnsApi = {
-  list(boardId: number) {
-    return api.get<Column[]>(`/boards/${boardId}/columns`);
-  },
-
   create(boardId: number, data: CreateColumnRequest) {
     return api.post<Column>(`/boards/${boardId}/columns`, data);
   },

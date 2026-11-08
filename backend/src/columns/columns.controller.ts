@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -37,15 +36,6 @@ export class ColumnsController {
     @Body() dto: CreateColumnDto,
   ) {
     return this.columnsService.create(boardId, req.user.id, dto);
-  }
-
-  /** GET /boards/:boardId/columns → 200 */
-  @Get()
-  findAll(
-    @Req() req: AuthRequest,
-    @Param('boardId', ParseIntPipe) boardId: number,
-  ) {
-    return this.columnsService.findAll(boardId, req.user.id);
   }
 
   /** PATCH /boards/:boardId/columns/reorder → 200 批次排序 */

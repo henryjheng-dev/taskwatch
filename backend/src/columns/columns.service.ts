@@ -35,19 +35,6 @@ export class ColumnsService {
     });
   }
 
-  /** 列出欄位（含任務），依 position 排序。 */
-  async findAll(boardId: number, userId: number) {
-    await this.authz.requirePermission(userId, boardId, Permission.VIEW_BOARD);
-
-    return this.prisma.column.findMany({
-      where: { boardId },
-      orderBy: { position: 'asc' },
-      include: {
-        tasks: { orderBy: { position: 'asc' } },
-      },
-    });
-  }
-
   /** 更新欄位名稱或 position，需要 UPDATE_COLUMN 權限。 */
   async update(
     boardId: number,
