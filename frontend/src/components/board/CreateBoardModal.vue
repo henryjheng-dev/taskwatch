@@ -33,7 +33,6 @@ async function handleCreate() {
   error.value = '';
   try {
     const { boardsApi } = await import('../../api');
-    // console.log(boardsApi.create);
     const res = await boardsApi.create({
       name: name.value.trim(),
     });

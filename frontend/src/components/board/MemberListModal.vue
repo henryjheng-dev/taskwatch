@@ -23,25 +23,15 @@ const loading = ref(false);
 const showRemoveConfirm = ref(false);
 const targetMember = ref<BoardMember | null>(null);
 
-// ─── 角色下拉選單狀態 ──────────────────────────────────────────
-// activeMemberId：目前哪個成員的 dropdown 開啟（null = 全部關閉）
-// selectedIndex：鍵盤方向鍵選中的項目索引（-1 = 無選中，滑鼠優先）
-// btnRefs：儲存每個角色按鈕的 DOM 參考，用來計算定位
-// dropdownStyle：計算後的 fixed 定位，透過 Teleport 寫入 style
 const activeMemberId = ref<number | null>(null);
 const selectedIndex = ref(-1);
 const btnRefs = ref<Map<number, HTMLElement>>(new Map());
 const dropdownStyle = ref<Record<string, string>>({});
 
-// ─── 當前使用者在看板中的角色資訊 ────────────────────────────────
 const currentMember = computed(() => members.value.find((m) => m.userId === props.currentUserId));
 const isOwner = computed(() => props.currentUserId === props.ownerId);
 const isAdmin = computed(() => currentMember.value?.role === 'ADMIN');
 
-// ─── 判斷是否可以編輯指定成員的角色 ──────────────────────────────
-// Owner：不可編輯自己，其他都可以
-// Admin：不可編輯自己、擁有者、其他 Admin，只能編輯 Member / Guest
-// Member / Guest：全部不可編輯
 function canEdit(member: BoardMember): boolean {
   if (member.userId === props.ownerId) return false;
   if (isOwner.value) return true;
@@ -50,10 +40,6 @@ function canEdit(member: BoardMember): boolean {
   return false;
 }
 
-// ─── 判斷是否可以移除指定成員 ────────────────────────────────────
-// Owner：可移除所有人（除了自己）
-// Admin：可移除 MEMBER / GUEST（不可移除 ADMIN、Owner、自己）
-// Member / Guest：全部不可移除
 function canRemove(member: BoardMember): boolean {
   if (member.userId === props.ownerId) return false;
   if (isOwner.value && member.userId !== props.currentUserId) return true;
@@ -62,9 +48,6 @@ function canRemove(member: BoardMember): boolean {
   return false;
 }
 
-// ─── 取得可指派的角色清單 ──────────────────────────────────────
-// Owner 可指派全部三種角色
-// Admin 只能指派 MEMBER 和 GUEST
 function assignableRoles(): { label: string; value: BoardRole }[] {
   if (isOwner.value) {
     return [
@@ -79,7 +62,6 @@ function assignableRoles(): { label: string; value: BoardRole }[] {
   ];
 }
 
-// ─── 角色 enum 轉中文顯示 ──────────────────────────────────────
 function displayRole(member: BoardMember): string {
   if (member.userId === props.ownerId) return '擁有者';
   const map: Record<string, string> = {
@@ -90,12 +72,8 @@ function displayRole(member: BoardMember): string {
   return map[member.role] ?? member.role;
 }
 
-// ─── 開啟 / 關閉角色下拉選單 ────────────────────────────────────
-// 計算按鈕位置 → 設定 fixed 定位 → 動態掛載全域 listener
 function toggleDropdown(member: BoardMember) {
   if (!canEdit(member)) return;
-
-  // 如果同一個成員再次點擊，關閉選單
   if (activeMemberId.value === member.id) {
     closeDropdown();
     return;
@@ -104,7 +82,6 @@ function toggleDropdown(member: BoardMember) {
   activeMemberId.value = member.id;
   selectedIndex.value = 0;
 
-  // 用 getBoundingClientRect 計算按鈕在視口中的位置
   const btn = btnRefs.value.get(member.id);
   if (btn) {
     const rect = btn.getBoundingClientRect();
@@ -115,7 +92,6 @@ function toggleDropdown(member: BoardMember) {
     };
   }
 
-  // ─── Click Outside：點擊選單外部時關閉 ──────────────────────
   function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
     if (!target.closest('.role-dropdown-menu') && !target.closest('.role-select-btn')) {
@@ -123,40 +99,29 @@ function toggleDropdown(member: BoardMember) {
     }
   }
 
-  // ─── Scroll：Modal 內部滾動時關閉，避免選單飄走 ─────────────
   function handleScroll() {
     closeDropdown();
   }
 
-  // 延遲掛載，避免本次點擊事件觸發 click outside
   nextTick(() => {
     window.addEventListener('click', handleClickOutside);
     window.addEventListener('scroll', handleScroll, true);
 
-    // 將焦點移到第一個選項，讓後續鍵盤事件能被 dropdown 的 @keydown 捕捉
     document.querySelector<HTMLElement>('.role-dropdown-menu button')?.focus();
   });
 
-  // 儲存 listener 參考以便移除
   (window as any).__roleDropdownCleanup = () => {
     window.removeEventListener('click', handleClickOutside);
     window.removeEventListener('scroll', handleScroll, true);
   };
 }
 
-// ─── 關閉下拉選單 ──────────────────────────────────────────────
-// 清除 active 狀態 + 移除全域 listener
 function closeDropdown() {
   activeMemberId.value = null;
   selectedIndex.value = -1;
   (window as any).__roleDropdownCleanup?.();
 }
 
-// ─── 角色下拉選單鍵盤導覽 ─────────────────────────────────────
-// ArrowUp / ArrowDown 循環切換 selectedIndex
-// Escape 關閉選單
-// 滑鼠移入時 selectedIndex = -1，hover 優先於鍵盤高亮
-// 掛在 container (@keydown) 上而非全域 listener，DOM 移除時自動失效
 function handleRoleKeydown(e: KeyboardEvent) {
   const activeMember = members.value.find((m) => m.id === activeMemberId.value);
   if (!activeMember) return;
@@ -189,8 +154,6 @@ function handleRoleKeydown(e: KeyboardEvent) {
   }
 }
 
-// ─── 執行角色變更 ──────────────────────────────────────────────
-// 關閉選單 → 呼叫 API → 成功後本端更新（不需通知 parent re-fetch）
 async function changeRole(member: BoardMember, role: BoardRole) {
   closeDropdown();
   try {
@@ -201,7 +164,6 @@ async function changeRole(member: BoardMember, role: BoardRole) {
   }
 }
 
-// ─── 移除成員（二次確認 + Optimistic UI）────────────────────────
 function confirmRemove(member: BoardMember) {
   closeDropdown();
   targetMember.value = member;
@@ -227,8 +189,6 @@ function handleRemoveCancel() {
   targetMember.value = null;
 }
 
-// ─── Modal 關閉時一併清除 dropdown ─────────────────────────────
-// 如果 dropdown 開啟中，優先關閉 dropdown 而非 modal
 function handleClose() {
   if (showRemoveConfirm.value) return;
   if (activeMemberId.value !== null) {
@@ -238,7 +198,6 @@ function handleClose() {
   emit('close');
 }
 
-// ─── 首次開啟 Modal 時載入成員資料 ──────────────────────────────
 onMounted(async () => {
   loading.value = true;
   try {

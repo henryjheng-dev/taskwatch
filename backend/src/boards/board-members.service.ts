@@ -12,10 +12,6 @@ import { BoardsService } from './boards.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
-/**
- * 看板成員管理：查詢、邀請、角色調整、移除。
- * 看板本體（CRUD／封存／搜尋）留在 BoardsService，兩者職責分離。
- */
 @Injectable()
 export class BoardMembersService {
   constructor(
@@ -72,11 +68,6 @@ export class BoardMembersService {
     });
   }
 
-  /**
-   * 新增成員，需要 ADD_MEMBER 權限。
-   * 先用 query 比對 name，找不到再比對 email。
-   * 若都找不到拋 404（不提示哪個欄位不存在，防止 User Enumeration）。
-   */
   async addMember(boardId: number, requesterId: number, dto: AddMemberDto) {
     await this.authz.requirePermission(
       requesterId,
@@ -117,11 +108,6 @@ export class BoardMembersService {
     });
   }
 
-  /**
-   * 更新成員角色，需要 UPDATE_MEMBER_ROLE 權限。
-   * - 不能降低自己的 ADMIN 權限（防止看板無管理員）
-   * - owner 的角色一律不可變更（ownerId 特權不進矩陣，改角色會造成權力分裂）
-   */
   async updateMemberRole(
     boardId: number,
     targetUserId: number,
@@ -160,17 +146,11 @@ export class BoardMembersService {
     });
   }
 
-  /**
-   * 移除成員：ADMIN（REMOVE_MEMBER 權限）可移除任何成員；
-   * 一般成員只能移除自己（Leave board，關係型規則）。
-   * owner 不能被移除（必須先轉讓看板）。
-   */
   async removeMember(
     boardId: number,
     targetUserId: number,
     requesterId: number,
   ) {
-    // 先確認請求者是成員：非成員一律 404，避免洩漏看板存在性
     const requester = await this.authz.requireMember(boardId, requesterId);
     await this.boardsService.assertNotArchived(boardId);
 
