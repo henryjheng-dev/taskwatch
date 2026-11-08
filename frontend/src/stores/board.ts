@@ -13,18 +13,13 @@ import { boardsApi, columnsApi, tasksApi } from '../api';
 export const useBoardStore = defineStore('board', () => {
   const board = ref<Board | null>(null);
   const loading = ref(false);
-  const error = ref<string | null>(null);
   const archivedBoards = ref<BoardListItem[]>([]);
 
   async function fetchBoard(id: number) {
     loading.value = true;
-    error.value = null;
     try {
       const res = await boardsApi.get(id);
       board.value = res.data;
-    } catch (e: any) {
-      error.value = e.response?.data?.message || '載入看板失敗';
-      throw e;
     } finally {
       loading.value = false;
     }
@@ -127,13 +122,11 @@ export const useBoardStore = defineStore('board', () => {
   function $reset() {
     board.value = null;
     loading.value = false;
-    error.value = null;
   }
 
   return {
     board,
     loading,
-    error,
     archivedBoards,
     fetchBoard,
     fetchArchivedBoards,
