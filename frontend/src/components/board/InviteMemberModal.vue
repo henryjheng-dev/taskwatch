@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
-import type { UserSearchResult } from '../../types';
+import type { UserSearchResult, BoardRole } from '../../types';
 import { boardsApi } from '../../api/boards';
 import { useSearch } from '../../composables/useSearch';
 import BaseModal from '../common/BaseModal.vue';
@@ -18,6 +18,15 @@ const emit = defineEmits<{
 
 const inviting = ref(false);
 const selectedUser = ref<UserSearchResult | null>(null);
+const selectedRole = ref<BoardRole>('MEMBER');
+
+// 每次開啟 modal 都回到預設角色，避免殘留上一次的選擇
+watch(
+  () => props.show,
+  (show) => {
+    if (show) selectedRole.value = 'MEMBER';
+  },
+);
 
 // IME（注音/拼音）組字狀態：組字期間不可讓下拉選單攔截鍵盤
 const isComposing = ref(false);
@@ -120,8 +129,12 @@ async function invite(user: UserSearchResult) {
   inviting.value = true;
   let succeeded = false;
   try {
-    await boardsApi.addMember(props.boardId, { query: user.email });
+    await boardsApi.addMember(props.boardId, {
+      query: user.email,
+      role: selectedRole.value,
+    });
     query.value = '';
+    selectedRole.value = 'MEMBER';
     statusType.value = 'success';
     statusMessage.value = '已添加成功';
     results.value = [];
@@ -148,6 +161,7 @@ function handleClose() {
     return;
   }
   selectedUser.value = null;
+  selectedRole.value = 'MEMBER';
   statusMessage.value = '';
   reset();
   emit('close');
@@ -155,16 +169,16 @@ function handleClose() {
 </script>
 
 <template>
-  <BaseModal :show="show" title="邀請成員" max-width="max-w-md" @close="handleClose">
+  <BaseModal :show="show" title="邀請成員" max-width="max-w-lg" @close="handleClose">
     <div class="relative pb-5" @keydown="handleKeydown">
       <div class="flex gap-2">
-        <div class="relative flex-1">
+        <div class="relative flex-1 min-w-0">
           <input
             ref="inputRef"
             v-model="query"
             type="text"
             placeholder="搜尋名稱或 Email…"
-            class="w-full border border-black/8 rounded-md px-3 py-2 text-sm outline-none focus:border-black/20 transition-colors disabled:opacity-50"
+            class="w-full h-9 border border-black/8 rounded-md px-3 py-0 text-sm outline-none focus:border-black/20 transition-colors disabled:opacity-50"
             :disabled="inviting"
             @input="handleQueryInput"
             @compositionstart="onCompositionStart"
@@ -213,6 +227,15 @@ function handleClose() {
         >
           邀請
         </BaseButton>
+        <select
+          v-model="selectedRole"
+          :disabled="inviting"
+          class="h-9 w-24 shrink-0 rounded-md border border-black/8 bg-white px-2 text-sm text-gray-900 outline-none focus:border-black/20 transition-colors disabled:opacity-50"
+        >
+          <option value="MEMBER">Member</option>
+          <option value="GUEST">Guest</option>
+          <option value="ADMIN">Admin</option>
+        </select>
       </div>
       <!-- 邀請狀態提示 -->
       <p
