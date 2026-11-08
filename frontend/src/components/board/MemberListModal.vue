@@ -49,14 +49,8 @@ function canRemove(member: BoardMember): boolean {
 }
 
 function assignableRoles(): { label: string; value: BoardRole }[] {
-  if (isOwner.value) {
-    return [
-      { label: '管理員', value: 'ADMIN' },
-      { label: '成員', value: 'MEMBER' },
-      { label: '訪客', value: 'GUEST' },
-    ];
-  }
   return [
+    { label: '管理員', value: 'ADMIN' },
     { label: '成員', value: 'MEMBER' },
     { label: '訪客', value: 'GUEST' },
   ];
