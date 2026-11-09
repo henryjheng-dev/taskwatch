@@ -161,7 +161,7 @@ describe('AiService', () => {
   });
 
   describe('generateBoard', () => {
-    it('超過每日上限時回傳 429，且不呼叫 Gemini、不退還額度', async () => {
+    it('超過每日上限時回傳 429、退還額度且不呼叫 Gemini', async () => {
       redis.increment.mockResolvedValue(6);
       redis.ttl.mockResolvedValue(7200);
 
@@ -180,7 +180,8 @@ describe('AiService', () => {
       expect((caught as HttpException).getResponse()).toContain('2 小時後重置');
       expect(generateContent).not.toHaveBeenCalled();
       expect(prisma.$transaction).not.toHaveBeenCalled();
-      expect(redis.decrement).not.toHaveBeenCalled();
+      expect(redis.decrement).toHaveBeenCalledTimes(1);
+      expect(redis.decrement).toHaveBeenCalledWith(usageKey);
     });
 
     it('次數剛好等於上限時仍允許生成', async () => {
@@ -342,7 +343,7 @@ describe('AiService', () => {
 
       expect(caught).toBeInstanceOf(HttpException);
       expect((caught as HttpException).getResponse()).toContain('2 次');
-      expect(redis.decrement).not.toHaveBeenCalled();
+      expect(redis.decrement).toHaveBeenCalledWith(usageKey);
     });
   });
 

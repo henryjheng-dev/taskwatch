@@ -127,6 +127,8 @@ export class AiService {
     const usageKey = aiUsageKey(userId);
     const count = await this.redis.increment(usageKey, SECONDS_IN_A_DAY);
     if (count > this.aiDailyLimit) {
+      // 超限請求不應消耗額度：把剛才 INCR 的計數退還，避免 used 持續膨脹
+      await this.redis.decrement(usageKey);
       const ttl = await this.redis.ttl(usageKey);
       throw new HttpException(
         `今日 AI 生成次數已達上限（${this.aiDailyLimit} 次），${Math.ceil(ttl / 3600)} 小時後重置`,
