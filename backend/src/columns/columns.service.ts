@@ -27,8 +27,15 @@ export class ColumnsService {
     );
     await this.boardsService.assertNotArchived(boardId);
 
-    const position =
-      dto.position ?? (await this.prisma.column.count({ where: { boardId } }));
+    let position = dto.position;
+    if (position === undefined) {
+      const { _max } = await this.prisma.column.aggregate({
+        where: { boardId },
+        _max: { position: true },
+      });
+      // 用 max + 1 而非 count，避免刪除中間欄位後新 position 與現有值重複
+      position = (_max.position ?? -1) + 1;
+    }
 
     return this.prisma.column.create({
       data: { boardId, name: dto.name, position },

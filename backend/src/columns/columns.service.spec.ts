@@ -32,7 +32,7 @@ describe('ColumnsService', () => {
     };
     prisma = {
       column: {
-        count: jest.fn(),
+        aggregate: jest.fn(),
         create: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
@@ -63,13 +63,15 @@ describe('ColumnsService', () => {
   });
 
   describe('create', () => {
-    it('未指定 position 時使用看板欄位數量', async () => {
-      prisma.column.count.mockResolvedValue(2);
-      prisma.column.create.mockResolvedValue({ id: 30, position: 2 });
+    it('未指定 position 時使用最大 position + 1', async () => {
+      prisma.column.aggregate.mockResolvedValue({
+        _max: { position: 5 },
+      });
+      prisma.column.create.mockResolvedValue({ id: 30, position: 6 });
 
       await expect(
         service.create(10, 1, { name: 'Done' }),
-      ).resolves.toEqual({ id: 30, position: 2 });
+      ).resolves.toEqual({ id: 30, position: 6 });
 
       expect(authz.requirePermission).toHaveBeenCalledWith(
         1,
@@ -77,20 +79,34 @@ describe('ColumnsService', () => {
         Permission.CREATE_COLUMN,
       );
       expect(boardsService.assertNotArchived).toHaveBeenCalledWith(10);
-      expect(prisma.column.count).toHaveBeenCalledWith({
+      expect(prisma.column.aggregate).toHaveBeenCalledWith({
         where: { boardId: 10 },
+        _max: { position: true },
       });
       expect(prisma.column.create).toHaveBeenCalledWith({
-        data: { boardId: 10, name: 'Done', position: 2 },
+        data: { boardId: 10, name: 'Done', position: 6 },
       });
     });
 
-    it('有指定 position 時不查詢欄位數量', async () => {
+    it('看板沒有欄位時 position 從 0 開始', async () => {
+      prisma.column.aggregate.mockResolvedValue({
+        _max: { position: null },
+      });
+      prisma.column.create.mockResolvedValue({ id: 30, position: 0 });
+
+      await service.create(10, 1, { name: 'Todo' });
+
+      expect(prisma.column.create).toHaveBeenCalledWith({
+        data: { boardId: 10, name: 'Todo', position: 0 },
+      });
+    });
+
+    it('有指定 position 時不查詢最大 position', async () => {
       prisma.column.create.mockResolvedValue({ id: 30, position: 0 });
 
       await service.create(10, 1, { name: 'Todo', position: 0 });
 
-      expect(prisma.column.count).not.toHaveBeenCalled();
+      expect(prisma.column.aggregate).not.toHaveBeenCalled();
       expect(prisma.column.create).toHaveBeenCalledWith({
         data: { boardId: 10, name: 'Todo', position: 0 },
       });
@@ -116,7 +132,7 @@ describe('ColumnsService', () => {
       await expect(service.create(10, 1, { name: 'Todo' })).rejects.toBeInstanceOf(
         ForbiddenException,
       );
-      expect(prisma.column.count).not.toHaveBeenCalled();
+      expect(prisma.column.aggregate).not.toHaveBeenCalled();
       expect(prisma.column.create).not.toHaveBeenCalled();
     });
   });

@@ -34,7 +34,7 @@ describe('TasksService', () => {
     prisma = {
       task: {
         findUnique: jest.fn(),
-        count: jest.fn(),
+        aggregate: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -76,8 +76,10 @@ describe('TasksService', () => {
   });
 
   describe('create', () => {
-    it('未指定 position 時使用同欄位任務數量', async () => {
-      prisma.task.count.mockResolvedValue(3);
+    it('未指定 position 時使用最大 position + 1', async () => {
+      prisma.task.aggregate.mockResolvedValue({
+        _max: { position: 4 },
+      });
       prisma.task.create.mockResolvedValue({ id: 100 });
 
       await expect(
@@ -94,8 +96,9 @@ describe('TasksService', () => {
         20,
         10,
       );
-      expect(prisma.task.count).toHaveBeenCalledWith({
+      expect(prisma.task.aggregate).toHaveBeenCalledWith({
         where: { columnId: 20 },
+        _max: { position: true },
       });
       expect(prisma.task.create).toHaveBeenCalledWith({
         data: {
@@ -105,17 +108,32 @@ describe('TasksService', () => {
           description: undefined,
           priority: undefined,
           dueDate: undefined,
-          position: 3,
+          position: 5,
         },
       });
     });
 
-    it('有指定 position 時不查詢任務數量', async () => {
+    it('欄位沒有任務時 position 從 0 開始', async () => {
+      prisma.task.aggregate.mockResolvedValue({
+        _max: { position: null },
+      });
+      prisma.task.create.mockResolvedValue({ id: 100 });
+
+      await service.create(10, 20, 1, { title: 'Task' });
+
+      expect(prisma.task.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ position: 0 }),
+        }),
+      );
+    });
+
+    it('有指定 position 時不查詢最大 position', async () => {
       prisma.task.create.mockResolvedValue({ id: 100 });
 
       await service.create(10, 20, 1, { title: 'Task', position: 0 });
 
-      expect(prisma.task.count).not.toHaveBeenCalled();
+      expect(prisma.task.aggregate).not.toHaveBeenCalled();
       expect(prisma.task.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ position: 0 }),
@@ -124,7 +142,9 @@ describe('TasksService', () => {
     });
 
     it('dueDate 會轉成 Date', async () => {
-      prisma.task.count.mockResolvedValue(0);
+      prisma.task.aggregate.mockResolvedValue({
+        _max: { position: null },
+      });
       prisma.task.create.mockResolvedValue({ id: 100 });
 
       await service.create(10, 20, 1, {

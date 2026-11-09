@@ -35,8 +35,15 @@ export class TasksService {
     await this.boardsService.assertNotArchived(boardId);
     await this.columnsService.assertColumnBelongsToBoard(columnId, boardId);
 
-    const position =
-      dto.position ?? (await this.prisma.task.count({ where: { columnId } }));
+    let position = dto.position;
+    if (position === undefined) {
+      const { _max } = await this.prisma.task.aggregate({
+        where: { columnId },
+        _max: { position: true },
+      });
+      // 用 max + 1 而非 count，避免刪除中間任務後新 position 與現有值重複
+      position = (_max.position ?? -1) + 1;
+    }
 
     return this.prisma.task.create({
       data: {
