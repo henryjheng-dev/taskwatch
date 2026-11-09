@@ -211,6 +211,7 @@ async function handleAiGenerate(prompt: string) {
     <AiGenerateModal
       :show="showAiModal"
       :remaining="usage?.remaining"
+      :limit="usage?.limit"
       :loading="generating"
       :error="aiError"
       @close="handleAiClose"

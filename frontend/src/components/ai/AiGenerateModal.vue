@@ -6,6 +6,7 @@ import BaseButton from '../common/BaseButton.vue';
 const props = defineProps<{
   show: boolean;
   remaining?: number;
+  limit?: number;
   loading?: boolean;
   error?: string;
 }>();
@@ -47,7 +48,10 @@ function handleClose() {
           class="block w-full px-3 py-2 bg-white text-gray-800 text-sm rounded-sm border border-black/8 transition-colors placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 focus-visible:ring-offset-white resize-none"
         />
         <div class="flex justify-between text-xs font-light leading-relaxed text-slate-500">
-          <span v-if="remaining !== undefined">{{ remaining }} / 5 remaining today</span>
+          <span v-if="remaining !== undefined">
+            {{ remaining }}<template v-if="limit !== undefined"> / {{ limit }}</template> remaining
+            today
+          </span>
           <span>{{ prompt.length }} / {{ MAX_LENGTH }}</span>
         </div>
       </div>
