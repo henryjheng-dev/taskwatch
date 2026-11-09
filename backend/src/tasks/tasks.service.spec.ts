@@ -369,6 +369,23 @@ describe('TasksService', () => {
       });
     });
 
+    it('targetColumnId 為 0 時仍會驗證欄位，不會直接更新', async () => {
+      prisma.task.findUnique.mockResolvedValue(task);
+      columnsService.assertColumnBelongsToBoard.mockRejectedValue(
+        new NotFoundException('欄位不存在'),
+      );
+
+      await expect(
+        service.move(100, 1, { targetColumnId: 0, position: 0 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(columnsService.assertColumnBelongsToBoard).toHaveBeenCalledWith(
+        0,
+        10,
+      );
+      expect(prisma.task.update).not.toHaveBeenCalled();
+    });
+
     it('目標欄位不屬於同一看板時不更新任務', async () => {
       prisma.task.findUnique.mockResolvedValue(task);
       columnsService.assertColumnBelongsToBoard.mockRejectedValue(

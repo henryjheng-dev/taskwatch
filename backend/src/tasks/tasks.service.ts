@@ -101,8 +101,9 @@ export class TasksService {
 
     const targetColumnId = dto.targetColumnId ?? task.columnId;
 
-    // 若移動到不同欄位，確認目標欄位屬於同一看板
-    if (dto.targetColumnId && dto.targetColumnId !== task.columnId) {
+    // 若移動到不同欄位，確認目標欄位屬於同一看板。
+    // 用 != null 而非 truthy，避免 targetColumnId = 0 被跳過驗證後直接寫入 DB。
+    if (dto.targetColumnId != null && dto.targetColumnId !== task.columnId) {
       await this.columnsService.assertColumnBelongsToBoard(
         dto.targetColumnId,
         boardId,

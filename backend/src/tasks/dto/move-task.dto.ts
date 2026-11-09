@@ -10,6 +10,7 @@ import { IsInt, IsOptional, Min } from 'class-validator';
 export class MoveTaskDto {
   @IsOptional()
   @IsInt({ message: 'targetColumnId 必須是整數' })
+  @Min(1, { message: 'targetColumnId 必須大於 0' })
   targetColumnId?: number;
 
   @IsInt({ message: 'position 必須是整數' })
