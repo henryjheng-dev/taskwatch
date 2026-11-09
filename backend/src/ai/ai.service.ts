@@ -159,7 +159,7 @@ export class AiService {
 - 若使用者有提到時程或截止日期，請為相關任務加上 dueDate（格式 YYYY-MM-DD）`;
 
     const response = await this.genai.models.generateContent({
-      model: 'gemini-3.1-flash-lite',
+      model: 'gemini-3.5-flash-lite',
       contents: prompt,
       config: {
         systemInstruction: systemPrompt,
