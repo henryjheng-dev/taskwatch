@@ -1,4 +1,10 @@
-import { IsArray, IsInt, ArrayNotEmpty, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  ArrayNotEmpty,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /** 單一欄位的排序資訊 */
@@ -7,6 +13,7 @@ class ColumnOrderItem {
   id!: number;
 
   @IsInt()
+  @Min(0, { message: 'position 不能為負數' })
   @Type(() => Number)
   position!: number;
 }
