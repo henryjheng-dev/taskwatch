@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./frontend/src/assets/logo.jpg" width="120" alt="TaskWatch logo" />
+  <img src="./frontend/public/favicon.png" width="160" alt="TaskWatch logo" />
 </p>
 
 # TaskWatch
