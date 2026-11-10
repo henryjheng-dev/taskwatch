@@ -55,7 +55,13 @@ function handleClose() {
 <template>
   <BaseModal :show="show" title="Create Board" max-width="max-w-sm" @close="handleClose">
     <div class="space-y-5">
-      <BaseInput v-model="name" label="Board name" placeholder="My new project" :error="error" />
+      <BaseInput
+        v-model="name"
+        label="Board name"
+        placeholder="My new project"
+        :error="error"
+        focus-style="border"
+      />
 
       <div class="flex justify-end gap-3">
         <BaseButton variant="tertiary" @click="handleClose">Cancel</BaseButton>

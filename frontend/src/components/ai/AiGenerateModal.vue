@@ -45,7 +45,7 @@ function handleClose() {
           :maxlength="MAX_LENGTH"
           rows="4"
           placeholder="e.g. Build an e-commerce website with Vue and NestJS..."
-          class="block w-full px-3 py-2 bg-white text-gray-800 text-sm rounded-sm border border-black/8 transition-colors placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 focus-visible:ring-offset-white resize-none"
+          class="block w-full px-3 py-2 bg-white text-gray-800 text-sm rounded-sm border border-black/8 transition-colors placeholder:text-gray-600 focus:outline-none focus:border-black/20 resize-none"
         />
         <div class="flex justify-between text-xs font-light leading-relaxed text-slate-500">
           <span v-if="remaining !== undefined">
