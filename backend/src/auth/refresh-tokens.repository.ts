@@ -19,40 +19,38 @@ export class RefreshTokensRepository {
     });
   }
 
+  async findOne(rawToken: string): Promise<{
+    userId: number;
+    revokedAt: Date | null;
+    expiresAt: Date;
+  } | null> {
+    return this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashToken(rawToken) },
+      select: { userId: true, revokedAt: true, expiresAt: true },
+    });
+  }
+
   async revokeOne(rawToken: string): Promise<{ userId: number } | null> {
+    const now = new Date();
+
     const result = await this.prisma.refreshToken.updateMany({
       where: {
         tokenHash: hashToken(rawToken),
         revokedAt: null,
-        expiresAt: { gt: new Date() },
+        expiresAt: { gt: now },
       },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: now },
     });
 
     if (result.count === 0) {
       return null;
     }
 
-    const record = await this.prisma.refreshToken.findFirst({
-      where: { tokenHash: hashToken(rawToken) },
-      select: { userId: true },
-    });
-
-    return record ?? null;
+    const record = await this.findOne(rawToken);
+    return record ? { userId: record.userId } : null;
   }
 
-  async findRevoked(rawToken: string): Promise<{ userId: number } | null> {
-    const record = await this.prisma.refreshToken.findFirst({
-      where: { tokenHash: hashToken(rawToken), revokedAt: { not: null } },
-      select: { userId: true },
-    });
-    return record ?? null;
-  }
-
-  async revokeAll(userId: number): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+  async deleteAllForUser(userId: number): Promise<void> {
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
   }
 }

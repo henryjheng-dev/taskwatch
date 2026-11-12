@@ -20,6 +20,9 @@ import { AuthProvider, Prisma } from '@/generated/prisma/client';
 
 const BCRYPT_ROUNDS = 12;
 
+// 輪替後的舊 refresh token 在此期間內重送，視為分頁競態或網路重試，不撤銷整個 session
+const REFRESH_ROTATION_GRACE_MS = 10_000;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -87,27 +90,36 @@ export class AuthService {
     };
   }
 
-  async refreshTokens(rawRefreshToken: string): Promise<TokenPair> {
-    const revoked = await this.refreshTokensRepo.revokeOne(rawRefreshToken);
+  async refreshTokens(rawRefreshToken: string): Promise<LoginResponse> {
+    // 1. 正常輪替：舊 token 標記 revokedAt，發一組新的
+    const rotated = await this.refreshTokensRepo.revokeOne(rawRefreshToken);
+    if (rotated) {
+      return this.buildLoginResponse(rotated.userId);
+    }
 
-    if (!revoked) {
-      const reused = await this.refreshTokensRepo.findRevoked(rawRefreshToken);
-      if (reused) {
-        await this.refreshTokensRepo.revokeAll(reused.userId);
-      }
+    // 2. 找不到可輪替的 token，確認它是「剛被輪替」還是「無效/已過期」
+    const existing = await this.refreshTokensRepo.findOne(rawRefreshToken);
+
+    if (!existing || existing.expiresAt.getTime() <= Date.now()) {
       throw new UnauthorizedException('Refresh Token 無效或已過期');
     }
 
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: revoked.userId },
-      select: { id: true, email: true },
-    });
+    const withinGrace =
+      existing.revokedAt !== null &&
+      Date.now() - existing.revokedAt.getTime() <= REFRESH_ROTATION_GRACE_MS;
 
-    return this.generateTokens(user.id, user.email);
+    // 3. 寬限期內：分頁競態或重試，直接再發一組
+    if (withinGrace) {
+      return this.buildLoginResponse(existing.userId);
+    }
+
+    // 4. 超過寬限期：視為 token 重複使用，刪除該使用者所有 session
+    await this.refreshTokensRepo.deleteAllForUser(existing.userId);
+    throw new UnauthorizedException('Refresh Token 無效或已過期');
   }
 
   async logout(userId: number): Promise<void> {
-    await this.refreshTokensRepo.revokeAll(userId);
+    await this.refreshTokensRepo.deleteAllForUser(userId);
   }
 
   async googleLogin(dto: GoogleLoginDto): Promise<LoginResponse> {
@@ -171,6 +183,16 @@ export class AuthService {
         googleId,
         authProvider: AuthProvider.GOOGLE,
       },
+      select: { id: true, name: true, email: true },
+    });
+
+    const tokens = await this.generateTokens(user.id, user.email);
+    return { ...tokens, user };
+  }
+
+  private async buildLoginResponse(userId: number): Promise<LoginResponse> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
       select: { id: true, name: true, email: true },
     });
 

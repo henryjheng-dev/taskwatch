@@ -120,7 +120,7 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token 不存在');
     }
 
-    const { accessToken, refreshToken } =
+    const { accessToken, refreshToken, user } =
       await this.authService.refreshTokens(raw);
 
     res.cookie(
@@ -128,7 +128,7 @@ export class AuthController {
       refreshToken,
       cookieOptions(this.isProduction, this.refreshCookieMaxAge),
     );
-    return { accessToken };
+    return { accessToken, user };
   }
 
   /**
