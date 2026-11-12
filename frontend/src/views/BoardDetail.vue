@@ -287,7 +287,10 @@ function onColumnEscape(e: KeyboardEvent) {
               <button
                 v-if="canArchive"
                 class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
-                @click="close(); showArchiveConfirm = true"
+                @click="
+                  close();
+                  showArchiveConfirm = true;
+                "
               >
                 <Archive class="w-4 h-4" :stroke-width="1.5" />
                 封存
@@ -295,7 +298,10 @@ function onColumnEscape(e: KeyboardEvent) {
               <button
                 v-if="isOwner"
                 class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
-                @click="close(); showDeleteBoardConfirm = true"
+                @click="
+                  close();
+                  showDeleteBoardConfirm = true;
+                "
               >
                 <Trash2 class="w-4 h-4" :stroke-width="1.5" />
                 刪除
@@ -307,7 +313,10 @@ function onColumnEscape(e: KeyboardEvent) {
               <button
                 v-if="canLeave"
                 class="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-100 whitespace-nowrap"
-                @click="close(); showLeaveConfirm = true"
+                @click="
+                  close();
+                  showLeaveConfirm = true;
+                "
               >
                 <LogOut class="w-4 h-4" :stroke-width="1.5" />
                 離開看板
@@ -426,8 +435,7 @@ function onColumnEscape(e: KeyboardEvent) {
   </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>
 
 <style>
 .column-ghost {

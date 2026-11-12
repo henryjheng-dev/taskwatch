@@ -23,7 +23,7 @@ const plainDescription = computed(() => {
     @click="emit('click', task.id)"
     @keydown.enter="emit('click', task.id)"
   >
-    <p class="text-sm font-medium text-gray-1000 leading-5 line-clamp-2">
+    <p class="text-base font-medium text-gray-1000 leading-5 line-clamp-2">
       {{ task.title }}
     </p>
     <p v-if="plainDescription" class="mt-1 text-sm leading-relaxed text-gray-900 line-clamp-2">

@@ -124,9 +124,7 @@ async function handleAiGenerate(prompt: string) {
       <div v-if="loading" class="text-xs font-light leading-relaxed text-slate-500">Loading...</div>
 
       <div v-else-if="loadError" class="flex flex-col items-start gap-3">
-        <p class="text-xs font-light leading-relaxed text-slate-500">
-          載入看板失敗，請稍後再試。
-        </p>
+        <p class="text-xs font-light leading-relaxed text-slate-500">載入看板失敗，請稍後再試。</p>
         <BaseButton variant="secondary" size="sm" @click="loadBoards">重試</BaseButton>
       </div>
 
@@ -144,8 +142,8 @@ async function handleAiGenerate(prompt: string) {
           class="bg-white rounded-sm border border-black/8 p-4 cursor-pointer hover:border-black/16 transition-colors"
           @click="router.push(`/boards/${board.id}`)"
         >
-          <h3 class="text-sm font-medium text-gray-1000">{{ board.name }}</h3>
-          <p class="mt-1 text-xs font-light leading-relaxed text-slate-500">
+          <h3 class="text-base font-medium text-gray-1000">{{ board.name }}</h3>
+          <p class="mt-1 text-sm font-light leading-relaxed text-slate-500">
             {{ board._count.columns }} columns · {{ board._count.boardMembers }} members
           </p>
         </div>
@@ -173,10 +171,10 @@ async function handleAiGenerate(prompt: string) {
             @click="router.push(`/boards/${board.id}`)"
           >
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-medium text-gray-1000">{{ board.name }}</h3>
+              <h3 class="text-base font-medium text-gray-1000">{{ board.name }}</h3>
               <button
                 v-if="board.currentUserRole === 'ADMIN'"
-                class="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-sm hover:bg-gray-50 hover:border-gray-1000 hover:text-gray-1000 cursor-pointer transition-colors"
+                class="px-2.5 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-sm hover:bg-gray-50 hover:border-gray-1000 hover:text-gray-1000 cursor-pointer transition-colors"
                 @click.stop="
                   restoreTargetId = board.id;
                   showRestoreConfirm = true;
