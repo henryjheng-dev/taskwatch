@@ -26,4 +26,5 @@ export interface GoogleLoginRequest {
 
 export interface RefreshResponse {
   accessToken: string;
+  user: User;
 }
