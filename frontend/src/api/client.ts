@@ -3,7 +3,7 @@ import type { Router } from 'vue-router';
 
 let routerInstance: Router | null = null;
 let accessToken: string | null = null;
-
+// 用依賴注入取代 import 避免循環依賴
 export function injectRouter(router: Router) {
   routerInstance = router;
 }
@@ -17,6 +17,18 @@ const api = axios.create({
   withCredentials: true,
 });
 
+const AUTH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/google',
+  '/auth/refresh',
+  '/auth/logout',
+];
+
+function isAuthEndpoint(url?: string): boolean {
+  return AUTH_ENDPOINTS.some((path) => url === path || url?.startsWith(`${path}?`));
+}
+// 用 Queue 來存取多個同時觸發的 Pomise，解決 Token Refresh Race Condition 的可能
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value: unknown) => void;
@@ -38,6 +50,7 @@ function processQueue(error: unknown) {
   failedQueue = [];
 }
 
+// 自動化帶入 Authorization Header
 api.interceptors.request.use(
   (config) => {
     if (accessToken) {
@@ -48,6 +61,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// Response data 解包
 api.interceptors.response.use(
   (response) => {
     response.data = response.data.data;
@@ -57,17 +71,19 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
 
-    if (status === 401 && !originalRequest._retry) {
+    if (status === 401 && !originalRequest._retry && !isAuthEndpoint(originalRequest.url)) {
+      originalRequest._retry = true;
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then(() => api(originalRequest));
       }
 
-      originalRequest._retry = true;
       isRefreshing = true;
 
       try {
+        // 用動態引入來避免循環依賴
         const { useAuthStore } = await import('../stores/auth');
         const authStore = useAuthStore();
         await authStore.refresh();
@@ -77,7 +93,7 @@ api.interceptors.response.use(
         processQueue(refreshError);
         const { useAuthStore } = await import('../stores/auth');
         const authStore = useAuthStore();
-        authStore.logout();
+        authStore.clearAuth();
         routerInstance?.push('/login');
         return Promise.reject(refreshError);
       } finally {
