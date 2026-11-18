@@ -33,8 +33,13 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to, _from) => {
+router.beforeEach(async (to, _from) => {
   const authStore = useAuthStore();
+
+  // 首次導覽先等 refresh 完成，避免重新整理時 access token 還是 null 就被踢到登入頁
+  if (!authStore.isInitialized) {
+    await authStore.init();
+  }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'Login' };
